@@ -12,6 +12,18 @@ async function jsonRequest(path, options = {}) {
   return response.json();
 }
 
+async function formRequest(path, formData) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || response.statusText);
+  }
+  return response.json();
+}
+
 export function loadIssues() {
   return jsonRequest("/issues");
 }
@@ -41,9 +53,8 @@ export function verifyToken(token) {
   });
 }
 
-export function uploadImage(url) {
-  return jsonRequest("/upload", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
+export function uploadImage(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return formRequest("/upload", formData);
 }

@@ -1,11 +1,7 @@
 <template>
   <div class="app-shell">
     <header class="app-header">
-      <div>
-        <h1>Radkummerkasten</h1>
-        <p>Wiener Fahrradprobleme finden, melden und besprechen.</p>
-      </div>
-      <button class="primary-button" @click="openCreate">Neuer Eintrag</button>
+      <h1>Radkummerkasten</h1>
     </header>
 
     <main class="app-body">
@@ -13,50 +9,44 @@
         <IssueMap
           :issues="issues"
           :selectedIssueId="selectedIssue?.id"
+          :createLocation="createLocation"
+          :createOpen="createOpen"
           @selectIssue="selectIssue"
           @mapClick="setCreateLocation"
         />
       </section>
 
-      <section class="panel-column">
-        <div class="panel-scroll">
-          <template v-if="selectedIssue">
-            <IssuePanel
-              :issue="selectedIssue"
-              :loadIssue="loadSelectedIssue"
-              @commentCreated="onCommentCreated"
-            />
-          </template>
-          <template v-else>
-            <div class="empty-state">
-              <p>
-                Wähle einen Eintrag auf der Karte oder erstelle einen neuen
-                Bericht.
-              </p>
-            </div>
-          </template>
+      <section class="panel-column" :class="{ open: panelOpen }">
+        <template v-if="selectedIssue">
+          <IssuePanel
+            :issue="selectedIssue"
+            :loadIssue="loadSelectedIssue"
+            @commentCreated="onCommentCreated"
+            @close="closePanel"
+          />
+        </template>
 
+        <template v-else-if="createOpen">
           <IssueForm
-            v-if="createOpen"
             :location="createLocation"
             :issueTypes="issueTypes"
             @submit="onCreateIssue"
-            @close="createOpen = false"
+            @close="closePanel"
           />
+        </template>
 
-          <EmailVerificationDialog
-            v-if="pendingToken || tokenToVerify"
-            :token="tokenToVerify || pendingToken"
-            @verified="onVerified"
-          />
-        </div>
+        <EmailVerificationDialog
+          v-if="pendingToken || tokenToVerify"
+          :token="tokenToVerify || pendingToken"
+          @verified="onVerified"
+        />
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import IssueMap from "./components/IssueMap.vue";
 import IssuePanel from "./components/IssuePanel.vue";
 import IssueForm from "./components/IssueForm.vue";
@@ -74,6 +64,8 @@ const createOpen = ref(false);
 const createLocation = ref({ latitude: 48.2082, longitude: 16.3738 });
 const tokenToVerify = ref(null);
 const pendingToken = ref(null);
+
+const panelOpen = computed(() => !!selectedIssue.value || createOpen.value);
 
 const issueTypes = [
   "Gefahrenstelle",
@@ -96,14 +88,17 @@ async function loadSelectedIssue(id) {
 
 function selectIssue(issue) {
   selectedIssue.value = null;
+  createOpen.value = false;
   loadSelectedIssue(issue.id);
 }
 
-function openCreate() {
-  createOpen.value = true;
+function closePanel() {
+  selectedIssue.value = null;
+  createOpen.value = false;
 }
 
 function setCreateLocation(coords) {
+  selectedIssue.value = null;
   createLocation.value = coords;
   createOpen.value = true;
 }

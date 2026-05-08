@@ -3,12 +3,8 @@
     <h3>Neuen Kommentar schreiben</h3>
     <form @submit.prevent="submit">
       <label>
-        Vorname
-        <input v-model="vorname" type="text" />
-      </label>
-      <label>
-        Nachname
-        <input v-model="nachname" type="text" />
+        Name
+        <input v-model="name" type="text" />
       </label>
       <label>
         E-Mail
@@ -30,21 +26,19 @@ import { createComment } from "../services/api.js";
 const props = defineProps({ issueId: Number });
 const emits = defineEmits(["created"]);
 
-const vorname = ref("");
-const nachname = ref("");
+const name = ref("");
 const email = ref("");
 const photoUrl = ref("");
 
 async function submit() {
   const payload = {
-    vorname: vorname.value,
-    nachname: nachname.value,
+    vorname: name.value,
+    nachname: "",
     email: email.value,
     photos: photoUrl.value ? [photoUrl.value.trim()] : undefined,
   };
   await createComment(props.issueId, payload);
-  vorname.value = "";
-  nachname.value = "";
+  name.value = "";
   email.value = "";
   photoUrl.value = "";
   emits("created");

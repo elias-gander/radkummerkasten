@@ -10,6 +10,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 const props = defineProps({
   issues: { type: Array, default: () => [] },
   selectedIssueId: Number,
+  createLocation: Object,
+  createOpen: Boolean,
 });
 const emits = defineEmits(["selectIssue", "mapClick"]);
 
@@ -41,6 +43,35 @@ function updateSource() {
   map.getSource(sourceId).setData({ type: "FeatureCollection", features });
 }
 
+function updateCreateMarker() {
+  if (!map || !map.getSource("create-source")) {
+    return;
+  }
+  if (props.createOpen && props.createLocation) {
+    map.getSource("create-source").setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: [
+              Number(props.createLocation.longitude),
+              Number(props.createLocation.latitude),
+            ],
+          },
+        },
+      ],
+    });
+  } else {
+    map.getSource("create-source").setData({
+      type: "FeatureCollection",
+      features: [],
+    });
+  }
+}
+
 onMounted(() => {
   const wienStyle = {
     version: 8,
@@ -66,6 +97,12 @@ onMounted(() => {
     style: wienStyle,
     center: [16.3738, 48.2082],
     zoom: 12,
+    minZoom: 10,
+    maxZoom: 16,
+    maxBounds: [
+      [16.0, 47.95],
+      [16.7, 48.4],
+    ],
   });
 
   map.addControl(new maplibregl.NavigationControl(), "top-left");
@@ -79,43 +116,74 @@ onMounted(() => {
       clusterRadius: 50,
     });
 
-    map.addLayer({
-      id: "clusters",
-      type: "circle",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": "#ff6600",
-        "circle-radius": ["step", ["get", "point_count"], 20, 10, 28, 30, 36],
-      },
-    });
+      map.addSource("create-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
 
-    map.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-size": 14,
-      },
-      paint: {
-        "text-color": "#ffffff",
-      },
-    });
+      map.addLayer({
+        id: "clusters",
+        type: "circle",
+        source: sourceId,
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": "#ff6600",
+          "circle-radius": ["step", ["get", "point_count"], 20, 10, 28, 30, 36],
+        },
+      });
 
-    map.addLayer({
-      id: "unclustered-point",
-      type: "circle",
-      source: sourceId,
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": "#0077cc",
-        "circle-radius": 10,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 2,
-      },
-    });
+      map.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: sourceId,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count_abbreviated}",
+          "text-size": 14,
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
+
+      map.addLayer({
+        id: "unclustered-point",
+        type: "circle",
+        source: sourceId,
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": "#0077cc",
+          "circle-radius": 10,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+
+      map.addLayer({
+        id: "create-marker",
+        type: "circle",
+        source: "create-source",
+        paint: {
+          "circle-color": "#2a9d8f",
+          "circle-radius": 12,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 3,
+        },
+      });
+
+      map.addLayer({
+        id: "create-marker-symbol",
+        type: "symbol",
+        source: "create-source",
+        layout: {
+          "text-field": "+",
+          "text-size": 18,
+          "text-offset": [0, 0.2],
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
 
     map.on("click", "clusters", (event) => {
       const features = map.queryRenderedFeatures(event.point, {
@@ -137,6 +205,22 @@ onMounted(() => {
       emits("selectIssue", { id: Number(feature.properties.id) });
     });
 
+    map.on("mouseenter", "unclustered-point", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "unclustered-point", () => {
+      map.getCanvas().style.cursor = "crosshair";
+    });
+
+    map.on("mouseenter", "clusters", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "clusters", () => {
+      map.getCanvas().style.cursor = "crosshair";
+    });
+
     map.on("click", (event) => {
       const features = map.queryRenderedFeatures(event.point, {
         layers: ["clusters", "unclustered-point"],
@@ -149,11 +233,19 @@ onMounted(() => {
       }
     });
 
+    map.getCanvas().style.cursor = "crosshair";
+
     updateSource();
+    updateCreateMarker();
   });
 });
 
 watch(() => props.issues, updateSource, { deep: true });
+watch(
+  () => [props.createLocation, props.createOpen],
+  updateCreateMarker,
+  { deep: true },
+);
 
 onBeforeUnmount(() => {
   map?.remove();

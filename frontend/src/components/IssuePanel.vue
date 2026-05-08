@@ -1,50 +1,37 @@
 <template>
-  <div class="panel-card">
+  <div>
     <div class="panel-header">
-      <div>
+      <div class="panel-header-row">
         <h2>{{ issue.issue_type }}</h2>
-        <p>{{ issue.beschreibung }}</p>
+        <button class="panel-close" type="button" @click="$emit('close')" aria-label="Schließen">
+          ×
+        </button>
       </div>
-      <span class="badge">Votes {{ issue.upvotes }}</span>
-    </div>
-    <div class="panel-meta">
-      <p>{{ issue.vorname }} {{ issue.nachname }}</p>
-      <p>{{ issue.email }}</p>
-      <p>Standort: {{ issue.latitude }}, {{ issue.longitude }}</p>
+      <p>von {{ issueDisplayName(issue) }} am {{ formatDateTime(issue.created_at) }}</p>
+      <p>{{ issue.beschreibung }}</p>
+
+      <div v-if="issue.photos?.length" class="photo-grid">
+        <img v-for="photo in issue.photos" :key="photo.id" :src="photo.url" alt="Issue photo" />
+      </div>
+
+      <div class="panel-header-actions">
+        <span class="badge">Finde ich auch ({{ issue.upvotes }})</span>
+      </div>
     </div>
 
-    <div v-if="issue.photos?.length" class="photo-grid">
-      <img
-        v-for="photo in issue.photos"
-        :key="photo.id"
-        :src="photo.url"
-        alt="Issue photo"
-      />
-    </div>
-
-    <div class="comments-section">
+    <div v-if="issue.comments?.length" class="comments-section">
       <h3>Kommentare</h3>
-      <div v-if="issue.comments?.length" class="comment-list">
-        <div
-          v-for="comment in issue.comments"
-          :key="comment.id"
-          class="comment-card"
-        >
+      <div class="comment-list">
+        <div v-for="comment in issue.comments" :key="comment.id" class="comment-card">
           <div>
-            <strong>{{ comment.vorname }} {{ comment.nachname }}</strong>
+            <strong>{{ commentDisplayName(comment) }}</strong>
             <p>{{ comment.email }}</p>
           </div>
           <div class="comment-photos" v-if="comment.photos?.length">
-            <img
-              v-for="photo in comment.photos"
-              :key="photo.id"
-              :src="photo.url"
-              alt="Comment photo"
-            />
+            <img v-for="photo in comment.photos" :key="photo.id" :src="photo.url" alt="Comment photo" />
           </div>
         </div>
       </div>
-      <p v-else>Keine Kommentare vorhanden.</p>
     </div>
 
     <CommentForm :issueId="issue.id" @created="created" />
@@ -58,9 +45,32 @@ const props = defineProps({
   issue: Object,
   loadIssue: Function,
 });
-const emits = defineEmits(["commentCreated"]);
+const emits = defineEmits(["commentCreated", "close"]);
 
 function created() {
   emits("commentCreated");
+}
+
+function formatDateTime(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleString('de-DE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function issueDisplayName(issue) {
+  return issue.nachname
+    ? `${issue.vorname} ${issue.nachname}`
+    : issue.vorname || "Unbekannt";
+}
+
+function commentDisplayName(comment) {
+  return comment.nachname
+    ? `${comment.vorname} ${comment.nachname}`
+    : comment.vorname || "Unbekannt";
 }
 </script>
