@@ -48,6 +48,7 @@
       <label>
         Fotos hochladen
         <input
+          ref="filesInput"
           type="file"
           accept="image/*"
           multiple
@@ -57,11 +58,15 @@
 
       <div class="file-list" v-if="files.length">
         <div v-for="(file, index) in files" :key="file.name + index" class="file-item">
-          <span>{{ file.name }}</span>
+          <span>{{ file.name }} ({{ formatFileSize(file.size) }})</span>
           <button type="button" class="secondary-button" @click="removeFile(index)">
-            Entfernen
+            ×
           </button>
         </div>
+        <p v-if="fileSizeError" class="field-error">{{ fileSizeError }}</p>
+        <p v-else-if="totalFileSize > 0" class="file-info">
+          {{ formatFileSize(totalFileSize) }} / {{ formatFileSize(MAX_UPLOAD_SIZE) }}
+        </p>
       </div>
 
       <progress v-if="submitting" aria-label="Wird übermittelt"></progress>
@@ -78,7 +83,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, computed } from "vue";
 import { uploadImage } from "../services/api.js";
 
 const props = defineProps({
@@ -94,9 +99,17 @@ const email = ref("");
 const latitude = ref(props.location.latitude || 48.2082);
 const longitude = ref(props.location.longitude || 16.3738);
 const files = ref([]);
+const filesInput = ref(null);
 const address = ref("");
 const addressLoading = ref(true);
 const submitting = ref(false);
+const fileSizeError = ref("");
+
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB in bytes
+
+const totalFileSize = computed(() =>
+  files.value.reduce((sum, file) => sum + file.size, 0),
+);
 
 watch(
   () => props.location,
@@ -129,23 +142,39 @@ async function getAddress(lat, lng) {
         return houseNumber ? `${road} ${houseNumber}` : road;
       }
     }
-    return "Adresse nicht gefunden";
+    return "Unnbekannt";
   } catch (error) {
     console.error("Error fetching address:", error);
-    return "Adresse nicht gefunden";
+    return "Unbekannt";
   }
 }
 
 function onFilesChange(event) {
-  files.value = Array.from(event.target.files || []);
+  const newFiles = Array.from(event?.target?.files ?? []);
+  const potentialTotal = totalFileSize.value + newFiles.reduce((sum, f) => sum + f.size, 0);
+  files.value.push(...newFiles);
+  const dt = new DataTransfer()
+  files.value.forEach(file => {
+    dt.items.add(file)
+  })
+  filesInput.value.files = dt.files
+  fileSizeError.value = potentialTotal > MAX_UPLOAD_SIZE ? 'Dateigröße überschritten. Maximal 5MB zulässig.' : '';
 }
 
 function removeFile(index) {
   files.value.splice(index, 1);
+  onFilesChange(null);
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + sizes[i];
 }
 
 async function submit() {
-  // Wait for address to finish loading
   while (addressLoading.value) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
