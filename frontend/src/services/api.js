@@ -58,3 +58,9 @@ export function uploadImage(file) {
   formData.append("file", file);
   return formRequest("/upload", formData);
 }
+
+export function voteIssue(issueId) {
+  return jsonRequest(`/issues/${issueId}/vote`, {
+    method: "POST",
+  });
+}

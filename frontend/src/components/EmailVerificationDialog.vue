@@ -5,7 +5,7 @@
       Bitte bestätige den Link in der E-Mail. Falls du den Link direkt hast,
       klicke hier.
     </p>
-    <button class="primary-button" @click="verify" :disabled="loading">
+    <button @click="verify" :disabled="loading">
       {{ loading ? "Prüfung..." : "Verifizieren" }}
     </button>
     <p v-if="message" class="verification-message">{{ message }}</p>

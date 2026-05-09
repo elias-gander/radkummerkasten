@@ -1,22 +1,12 @@
 import { query } from "../db.js";
 import { randomUUID } from "crypto";
 import { sendMagicLink } from "../lib/mailer.js";
-
-const issueTypes = [
-  "Gefahrenstelle",
-  "Lückenschluss",
-  "Einbahn öffnen",
-  "Radbügel",
-  "Markierung oder Schild",
-  "Ampel",
-  "Hindernis",
-  "Anderes",
-];
+import { ISSUE_TYPES, ISSUE_TYPES_BY_ID } from "../constants.js";
 
 export default async function issueRoutes(app) {
   app.get("/issues", async () => {
     const result = await query(
-      "SELECT id, issue_type, beschreibung, upvotes, latitude, longitude FROM issues ORDER BY created_at DESC LIMIT 50000",
+      "SELECT id, issue_type_id, beschreibung, upvotes, latitude, longitude FROM issues ORDER BY created_at DESC LIMIT 50000",
     );
     return result.rows;
   });
@@ -24,7 +14,7 @@ export default async function issueRoutes(app) {
   app.get("/issues/:id", async (request) => {
     const { id } = request.params;
     const result = await query(
-      "SELECT id, issue_type, beschreibung, vorname, nachname, email, upvotes, latitude, longitude, created_at FROM issues WHERE id = $1",
+      "SELECT id, issue_type_id, beschreibung, vorname, nachname, email, upvotes, latitude, longitude, created_at FROM issues WHERE id = $1",
       [id],
     );
     if (!result.rowCount) {
@@ -59,7 +49,7 @@ export default async function issueRoutes(app) {
   app.post("/issues", async (request) => {
     const body = request.body;
     const fields = [
-      "issue_type",
+      "issue_type_id",
       "beschreibung",
       "vorname",
       "nachname",
@@ -72,8 +62,8 @@ export default async function issueRoutes(app) {
         return app.httpErrors.badRequest(`${field} is required`);
       }
     }
-    if (!issueTypes.includes(body.issue_type)) {
-      return app.httpErrors.badRequest("Invalid issue type");
+    if (!ISSUE_TYPES.find((item) => item.id === body.issue_type_id)) {
+      return app.httpErrors.badRequest("Invalid issue type id");
     }
     const token = randomUUID();
     await query(
@@ -82,5 +72,11 @@ export default async function issueRoutes(app) {
     );
     await sendMagicLink(body.email, token);
     return { status: "pending", token };
+  });
+
+  app.post("/issues/:id/vote", async (request) => {
+    const { id } = request.params;
+    await query("UPDATE issues SET upvotes = upvotes + 1 WHERE id = $1", [id]);
+    return { success: true };
   });
 }

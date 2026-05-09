@@ -1,48 +1,24 @@
 <template>
-  <div class="app-shell">
-    <header class="app-header">
-      <h1>Radkummerkasten</h1>
-    </header>
+  <main>
+    <section class="map-column">
+      <IssueMap :issues="issues" :createLocation="createLocation" @selectIssue="selectIssue"
+        @mapClick="setCreateLocation" />
+    </section>
 
-    <main class="app-body">
-      <section class="map-column">
-        <IssueMap
-          :issues="issues"
-          :selectedIssueId="selectedIssue?.id"
-          :createLocation="createLocation"
-          :createOpen="createOpen"
-          @selectIssue="selectIssue"
-          @mapClick="setCreateLocation"
-        />
-      </section>
+    <section class="panel-column" :class="{ open: isPanelOpen }">
+      <template v-if="selectedIssue">
+        <IssuePanel :issue="selectedIssue" :loadIssue="loadSelectedIssue" @commentCreated="onCommentCreated"
+          @close="closePanel" />
+      </template>
 
-      <section class="panel-column" :class="{ open: panelOpen }">
-        <template v-if="selectedIssue">
-          <IssuePanel
-            :issue="selectedIssue"
-            :loadIssue="loadSelectedIssue"
-            @commentCreated="onCommentCreated"
-            @close="closePanel"
-          />
-        </template>
+      <template v-else-if="createLocation">
+        <IssueForm :location="createLocation" :issueTypes="ISSUE_TYPES" @submit="onCreateIssue" @close="closePanel" />
+      </template>
 
-        <template v-else-if="createOpen">
-          <IssueForm
-            :location="createLocation"
-            :issueTypes="issueTypes"
-            @submit="onCreateIssue"
-            @close="closePanel"
-          />
-        </template>
-
-        <EmailVerificationDialog
-          v-if="pendingToken || tokenToVerify"
-          :token="tokenToVerify || pendingToken"
-          @verified="onVerified"
-        />
-      </section>
-    </main>
-  </div>
+      <EmailVerificationDialog v-if="pendingToken || tokenToVerify" :token="tokenToVerify || pendingToken"
+        @verified="onVerified" />
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -57,26 +33,16 @@ import {
   createIssue,
   verifyToken,
 } from "./services/api.js";
+import { ISSUE_TYPES } from "./constants.js";
 
 const issues = ref([]);
 const selectedIssue = ref(null);
-const createOpen = ref(false);
-const createLocation = ref({ latitude: 48.2082, longitude: 16.3738 });
+const createLocation = ref(null);
 const tokenToVerify = ref(null);
 const pendingToken = ref(null);
 
-const panelOpen = computed(() => !!selectedIssue.value || createOpen.value);
+const isPanelOpen = computed(() => !!selectedIssue.value || !!createLocation.value);
 
-const issueTypes = [
-  "Gefahrenstelle",
-  "Lückenschluss",
-  "Einbahn öffnen",
-  "Radbügel",
-  "Markierung oder Schild",
-  "Ampel",
-  "Hindernis",
-  "Anderes",
-];
 
 async function refreshIssues() {
   issues.value = await loadIssues();
@@ -87,20 +53,18 @@ async function loadSelectedIssue(id) {
 }
 
 function selectIssue(issue) {
-  selectedIssue.value = null;
-  createOpen.value = false;
+  createLocation.value = null;
   loadSelectedIssue(issue.id);
 }
 
 function closePanel() {
   selectedIssue.value = null;
-  createOpen.value = false;
+  createLocation.value = null;
 }
 
 function setCreateLocation(coords) {
   selectedIssue.value = null;
   createLocation.value = coords;
-  createOpen.value = true;
 }
 
 async function onCreateIssue(payload) {

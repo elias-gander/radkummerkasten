@@ -1,6 +1,17 @@
+CREATE TYPE issue_type_id_enum AS ENUM (
+  'gefahrenstelle',
+  'lueckenschluss',
+  'einbahn-oeffnen',
+  'radbuegel',
+  'markierung-schild',
+  'ampel',
+  'hindernis',
+  'anderes'
+);
+
 CREATE TABLE issues (
   id serial PRIMARY KEY,
-  issue_type text NOT NULL,
+  issue_type_id issue_type_id_enum NOT NULL,
   beschreibung text NOT NULL,
   vorname text NOT NULL,
   nachname text NOT NULL,
@@ -36,12 +47,12 @@ CREATE TABLE pending_submissions (
 );
 
 CREATE INDEX idx_issues_lat_lng ON issues(latitude, longitude);
-CREATE INDEX idx_issues_type ON issues(issue_type);
+CREATE INDEX idx_issues_type_id ON issues(issue_type_id);
 
-INSERT INTO issues (issue_type, beschreibung, vorname, nachname, email, upvotes, latitude, longitude)
+INSERT INTO issues (issue_type_id, beschreibung, vorname, nachname, email, upvotes, latitude, longitude)
 VALUES
-  ('Gefahrenstelle', 'Starke Kfz-Berührung an Kreuzung', 'Anna', 'Mayer', 'anna@example.com', 12, 48.2085, 16.3738),
-  ('Lückenschluss', 'Radweg endet unvermittelt', 'Jonas', 'Weber', 'jonas@example.com', 7, 48.2111, 16.3772),
-  ('Einbahn öffnen', 'Einbahnstraße wirkt für Radfahrende unnötig', 'Lena', 'Klein', 'lena@example.com', 4, 48.2068, 16.3654),
-  ('Radbügel', 'Fehlen von Fahrradständern am Markt', 'Markus', 'Schwarz', 'markus@example.com', 5, 48.2049, 16.3700),
-  ('Ampel', 'Ampelschaltung lässt Radfahrer lange warten', 'Sara', 'Hofer', 'sara@example.com', 9, 48.2103, 16.3691);
+  ('gefahrenstelle', 'Starke Kfz-Berührung an Kreuzung', 'Anna', 'Mayer', 'anna@example.com', 12, 48.2085, 16.3738),
+  ('lueckenschluss', 'Radweg endet unvermittelt', 'Jonas', 'Weber', 'jonas@example.com', 7, 48.2111, 16.3772),
+  ('einbahn-oeffnen', 'Einbahnstraße wirkt für Radfahrende unnötig', 'Lena', 'Klein', 'lena@example.com', 4, 48.2068, 16.3654),
+  ('radbuegel', 'Fehlen von Fahrradständern am Markt', 'Markus', 'Schwarz', 'markus@example.com', 5, 48.2049, 16.3700),
+  ('ampel', 'Ampelschaltung lässt Radfahrer lange warten', 'Sara', 'Hofer', 'sara@example.com', 9, 48.2103, 16.3691);

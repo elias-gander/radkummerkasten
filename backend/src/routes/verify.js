@@ -20,9 +20,9 @@ export default async function verifyRoutes(app) {
     if (submission.type === "issue") {
       const body = submission.payload;
       const result = await query(
-        "INSERT INTO issues (issue_type, beschreibung, vorname, nachname, email, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        "INSERT INTO issues (issue_type_id, beschreibung, vorname, nachname, email, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
         [
-          body.issue_type,
+          body.issue_type_id,
           body.beschreibung,
           body.vorname,
           body.nachname,
