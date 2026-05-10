@@ -1,8 +1,8 @@
 <template>
   <main>
     <section class="map-column">
-      <IssueMap :issues="issues" :createLocation="createLocation" @selectIssue="selectIssue"
-        @mapClick="setCreateLocation" />
+      <IssueMap :issues="issues" :newIssueLocation="newIssueLocation" :newIssueTypeId="newIssueTypeId"
+        :selectedIssueId="selectedIssue?.id" @selectIssue="selectIssue" @mapClick="setNewIssueLocation" />
     </section>
 
     <section class="panel-column" :class="{ open: isPanelOpen }">
@@ -11,8 +11,9 @@
           @close="closePanel" />
       </template>
 
-      <template v-else-if="createLocation">
-        <IssueForm :location="createLocation" :issueTypes="ISSUE_TYPES" @submit="onCreateIssue" @close="closePanel" />
+      <template v-else-if="newIssueLocation">
+        <IssueForm :location="newIssueLocation" @selectIssueTypeId="setNewIssueTypeId" @submit="onCreateIssue"
+          @close="closePanel" />
       </template>
 
       <EmailVerificationDialog v-if="pendingToken || tokenToVerify" :token="tokenToVerify || pendingToken"
@@ -37,11 +38,12 @@ import { ISSUE_TYPES } from "./constants.js";
 
 const issues = ref([]);
 const selectedIssue = ref(null);
-const createLocation = ref(null);
+const newIssueLocation = ref(null);
+const newIssueTypeId = ref("anderes");
 const tokenToVerify = ref(null);
 const pendingToken = ref(null);
 
-const isPanelOpen = computed(() => !!selectedIssue.value || !!createLocation.value);
+const isPanelOpen = computed(() => !!selectedIssue.value || !!newIssueLocation.value);
 
 
 async function refreshIssues() {
@@ -53,18 +55,24 @@ async function loadSelectedIssue(id) {
 }
 
 function selectIssue(issue) {
-  createLocation.value = null;
+  newIssueLocation.value = null;
+  newIssueTypeId.value = "anderes";
   loadSelectedIssue(issue.id);
 }
 
 function closePanel() {
   selectedIssue.value = null;
-  createLocation.value = null;
+  newIssueLocation.value = null;
+  newIssueTypeId.value = "anderes";
 }
 
-function setCreateLocation(coords) {
+function setNewIssueLocation(coords) {
   selectedIssue.value = null;
-  createLocation.value = coords;
+  newIssueLocation.value = coords;
+}
+
+function setNewIssueTypeId(issueTypeId) {
+  newIssueTypeId.value = issueTypeId;
 }
 
 async function onCreateIssue(payload) {

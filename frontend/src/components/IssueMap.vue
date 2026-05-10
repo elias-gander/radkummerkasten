@@ -9,7 +9,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 const props = defineProps({
   issues: { type: Array },
-  createLocation: Object,
+  newIssueLocation: Object,
+  newIssueTypeId: String,
+  selectedIssueId: Number,
 });
 const emits = defineEmits(["selectIssue", "mapClick"]);
 
@@ -24,9 +26,7 @@ function buildFeature(issue) {
     properties: {
       id: issue.id,
       issue_type_id: issue.issue_type_id,
-      issue_type: issue.issue_type,
-      beschreibung: issue.beschreibung,
-      upvotes: issue.upvotes,
+      selected: issue.id === props.selectedIssueId,
     },
     geometry: {
       type: "Point",
@@ -41,20 +41,20 @@ function updateSource() {
 }
 
 function updateCreateMarker() {
-  if (props.createLocation) {
+  if (props.newIssueLocation) {
     map.getSource(CREATE_SOURCE_ID).setData({
       type: "FeatureCollection",
       features: [
         {
           type: "Feature",
           properties: {
-            issue_type_id: props.createLocation.issue_type_id,
+            issue_type_id: props.newIssueTypeId,
           },
           geometry: {
             type: "Point",
             coordinates: [
-              Number(props.createLocation.longitude),
-              Number(props.createLocation.latitude),
+              Number(props.newIssueLocation.longitude),
+              Number(props.newIssueLocation.latitude),
             ],
           },
         },
@@ -69,15 +69,25 @@ function updateCreateMarker() {
 }
 
 async function loadIcons() {
-  const icons = import.meta.glob(`/assets/markers/*/*.png`, {
-    eager: true, import: "default",
+  const icons = import.meta.glob("/assets/markers/*/*.png", {
+    eager: true,
+    as: "url",
   });
+
   for (const [path, url] of Object.entries(icons)) {
     const fileName = path.split('/').pop().replace('.png', '');
     const status = path.split('/').slice(-2, -1)[0];
     const imageId = `${status}-${fileName}`;
-    const image = await map.loadImage(url);
-    map.addImage(imageId, image.data ?? image);
+    await new Promise((resolve, reject) => {
+      map.loadImage(url, (error, image) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        map.addImage(imageId, image);
+        resolve();
+      });
+    });
   }
 }
 
@@ -115,7 +125,7 @@ onMounted(() => {
     ],
   });
 
-  map.on("load", () => {
+  map.on("load", async () => {
     map.addSource(ISSUES_SOURCE_ID, {
       type: "geojson",
       data: { type: "FeatureCollection", features: [] },
@@ -161,8 +171,7 @@ onMounted(() => {
       source: ISSUES_SOURCE_ID,
       filter: ["!", ["has", "point_count"]],
       layout: {
-        "icon-image": ["concat", "open-", ["get", "issue_type_id"]],
-        "icon-size": 0.5,
+        "icon-image": ["case", ["get", "selected"], ["concat", "selected-", ["get", "issue_type_id"]], ["concat", "default-", ["get", "issue_type_id"]]],
         "icon-allow-overlap": true,
       },
     });
@@ -172,30 +181,9 @@ onMounted(() => {
       type: "symbol",
       source: CREATE_SOURCE_ID,
       layout: {
-        "icon-image": ["concat", "new-", ["get", "issue_type_id"]],
-        "icon-size": 0.5,
+        "icon-image": ["concat", "selected-", ["get", "issue_type_id"]],
         "icon-allow-overlap": true,
       },
-    });
-
-    map.on("click", "clusters", (event) => {
-      const features = map.queryRenderedFeatures(event.point, {
-        layers: ["clusters"],
-      });
-      if (!features.length) return;
-      const clusterId = features[0].properties.cluster_id;
-      map
-        .getSource(ISSUES_SOURCE_ID)
-        .getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({ center: features[0].geometry.coordinates, zoom });
-        });
-    });
-
-    map.on("click", "unclustered-point", (event) => {
-      const feature = event.features && event.features[0];
-      if (!feature) return;
-      emits("selectIssue", { id: Number(feature.properties.id) });
     });
 
     map.on("mouseenter", "unclustered-point", () => {
@@ -214,6 +202,24 @@ onMounted(() => {
       map.getCanvas().style.cursor = "crosshair";
     });
 
+    map.on("click", "clusters", (event) => {
+      const feature = event.features && event.features[0];
+      if (!feature) return;
+      map
+        .getSource(ISSUES_SOURCE_ID)
+        .getClusterExpansionZoom(feature.properties.cluster_id, (err, zoom) => {
+          if (err) return;
+          map.easeTo({ center: feature.geometry.coordinates, zoom });
+        });
+    });
+
+    map.on("click", "unclustered-point", (event) => {
+      const feature = event.features && event.features[0];
+      if (!feature) return;
+
+      emits("selectIssue", { id: Number(feature.properties.id) });
+    });
+
     map.on("click", (event) => {
       const features = map.queryRenderedFeatures(event.point, {
         layers: ["clusters", "unclustered-point"],
@@ -228,15 +234,16 @@ onMounted(() => {
 
     map.getCanvas().style.cursor = "crosshair";
 
+    await loadIcons();
     updateSource();
     updateCreateMarker();
-    loadIcons();
   });
 });
 
 watch(() => props.issues, updateSource, { deep: true });
+watch(() => props.selectedIssueId, updateSource);
 watch(
-  () => props.createLocation,
+  [() => props.newIssueLocation, () => props.newIssueTypeId],
   updateCreateMarker,
   { deep: true },
 );

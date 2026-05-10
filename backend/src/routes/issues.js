@@ -1,12 +1,12 @@
 import { query } from "../db.js";
 import { randomUUID } from "crypto";
 import { sendMagicLink } from "../lib/mailer.js";
-import { ISSUE_TYPES, ISSUE_TYPES_BY_ID } from "../constants.js";
+import { ISSUE_TYPES } from "../constants.js";
 
 export default async function issueRoutes(app) {
   app.get("/issues", async () => {
     const result = await query(
-      "SELECT id, issue_type_id, beschreibung, upvotes, latitude, longitude FROM issues ORDER BY created_at DESC LIMIT 50000",
+      "SELECT id, issue_type_id, beschreibung, upvotes, latitude, longitude FROM issues",
     );
     return result.rows;
   });

@@ -15,8 +15,8 @@
   <form @submit.prevent="submit">
     <label>
       Typ
-      <select v-model="issue_type_id">
-        <option v-for="type in issueTypes" :key="type.id" :value="type.id">
+      <select v-model="issueTypeId" required>
+        <option v-for="type in ISSUE_TYPES" :key="type.id" :value="type.id">
           {{ type.label }}
         </option>
       </select>
@@ -53,14 +53,14 @@
 import { ref, watch, onMounted } from "vue";
 import { uploadImage } from "../services/api.js";
 import FileUpload from "./FileUpload.vue";
+import { ISSUE_TYPES } from "../constants.js";
 
 const props = defineProps({
-  issueTypes: Array,
   location: Object,
 });
-const emits = defineEmits(["submit", "close"]);
+const emits = defineEmits(["selectIssueTypeId", "submit", "close"]);
 
-const issue_type_id = ref(props.issueTypes?.[0]?.id || "gefahrenstelle");
+const issueTypeId = ref("anderes");
 const beschreibung = ref("");
 const name = ref("");
 const email = ref("");
@@ -72,13 +72,13 @@ const addressLoading = ref(true);
 const submitting = ref(false);
 
 
-watch(
-  () => props.location,
+watch(() => props.location,
   (newLocation) => {
     latitude.value = newLocation.latitude;
     longitude.value = newLocation.longitude;
   },
 );
+watch(issueTypeId, (newTypeId) => emits("selectIssueTypeId", newTypeId));
 
 async function updateAddress() {
   addressLoading.value = true;
@@ -128,7 +128,7 @@ async function submit() {
     }
 
     emits("submit", {
-      issue_type_id: issue_type_id.value,
+      issue_type_id: issueTypeId.value,
       beschreibung: beschreibung.value,
       vorname: name.value,
       nachname: "",
