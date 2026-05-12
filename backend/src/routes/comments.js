@@ -1,5 +1,6 @@
 import { query } from "../db.js";
 import { randomUUID } from "crypto";
+import { verifyTurnstile } from "../lib/turnstile.js";
 import { sendMagicLink } from "../lib/mailer.js";
 
 export default async function commentRoutes(app) {
@@ -15,7 +16,7 @@ export default async function commentRoutes(app) {
   app.post("/issues/:id/comments", async (request) => {
     const { id } = request.params;
     const body = request.body;
-    const fields = ["name"];
+    const fields = ["name", "turnstile_token"];
     for (const field of fields) {
       if (!body[field]) {
         return app.httpErrors.badRequest(`${field} is required`);
@@ -27,6 +28,13 @@ export default async function commentRoutes(app) {
     if (!issueResult.rowCount) {
       return app.httpErrors.notFound("Issue not found");
     }
+
+    try {
+      await verifyTurnstile(body.turnstile_token);
+    } catch (error) {
+      return app.httpErrors.badRequest("Captcha verification failed");
+    }
+
     const token = randomUUID();
     await query(
       "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",

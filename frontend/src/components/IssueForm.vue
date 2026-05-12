@@ -43,13 +43,17 @@
     </label>
 
     <progress v-if="submitting" aria-label="Wird übermittelt"></progress>
-    <button v-else type="submit" :aria-busy="submitting">
+    <button v-else type="submit" :aria-busy="submitting" :disabled="!turnstileToken">
       Absenden
     </button>
+
+    <VueTurnstile site-key="0x4AAAAAADOEW46W4_4pBs09" v-model="turnstileToken" theme="light"
+      appearance="interaction-only" />
   </form>
 </template>
 
 <script setup>
+import VueTurnstile from "vue-turnstile";
 import { ref, watch, onMounted } from "vue";
 import { uploadImage } from "../services/api.js";
 import FileUpload from "./FileUpload.vue";
@@ -70,7 +74,7 @@ const files = ref([]);
 const address = ref("");
 const addressLoading = ref(true);
 const submitting = ref(false);
-
+const turnstileToken = ref("");
 
 watch(() => props.location,
   (newLocation) => {
@@ -135,6 +139,7 @@ async function submit() {
       latitude: latitude.value,
       longitude: longitude.value,
       photos: photoUrls,
+      turnstile_token: turnstileToken.value,
     });
 
     beschreibung.value = "";

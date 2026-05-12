@@ -30,15 +30,20 @@
 
   <progress v-if="isSubscribing"></progress>
   <span class="secondary" v-if="confirmationLinkSentTo">Bestätigungslink gesendet an {{ confirmationLinkSentTo }}</span>
-  <button v-else :disabled="isSubscribing" @click="subscribe" type="button">
+
+  <button v-else :disabled="!turnstileToken" @click="subscribe" type="button">
     Abonnieren
   </button>
 
+  <VueTurnstile site-key="0x4AAAAAADOEW46W4_4pBs09" v-model="turnstileToken" theme="light"
+    appearance="interaction-only" />
+
   <h3>Neuer Kommentar</h3>
-  <CommentForm :issueId="issue.id" @created="created" />
+  <CommentForm :issueId="issue.id" :turnstileToken="turnstileToken" @created="created" />
 </template>
 
 <script setup>
+import VueTurnstile from "vue-turnstile";
 import CommentForm from "./CommentForm.vue";
 import { voteIssue, subscribeToIssue } from "../services/api.js";
 import { ref, onMounted, watch } from "vue";
@@ -53,6 +58,7 @@ const voting = ref(false);
 const hasVoted = ref(false);
 const isSubscribing = ref(false);
 const confirmationLinkSentTo = ref(null);
+const turnstileToken = ref("");
 
 onMounted(() => {
   const votedIssues = getVotedIssues();
@@ -103,7 +109,7 @@ async function subscribe() {
 
   isSubscribing.value = true;
   try {
-    await subscribeToIssue(props.issue.id, email);
+    await subscribeToIssue(props.issue.id, email, turnstileToken.value);
     confirmationLinkSentTo.value = email;
   } catch (error) {
     console.error(error);

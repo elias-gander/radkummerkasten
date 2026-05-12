@@ -1,6 +1,7 @@
 import { query } from "../db.js";
 import { randomUUID } from "crypto";
 import { sendMagicLink } from "../lib/mailer.js";
+import { verifyTurnstile } from "../lib/turnstile.js";
 import { ISSUE_TYPES } from "../constants.js";
 
 export default async function issueRoutes(app) {
@@ -54,6 +55,7 @@ export default async function issueRoutes(app) {
       "name",
       "latitude",
       "longitude",
+      "turnstile_token",
     ];
     for (const field of fields) {
       if (!body[field]) {
@@ -63,6 +65,13 @@ export default async function issueRoutes(app) {
     if (!ISSUE_TYPES.find((item) => item.id === body.issue_type_id)) {
       return app.httpErrors.badRequest("Invalid issue type id");
     }
+
+    try {
+      await verifyTurnstile(body.turnstile_token);
+    } catch (error) {
+      return app.httpErrors.badRequest("Captcha verification failed");
+    }
+
     const token = randomUUID();
     await query(
       "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",
@@ -77,8 +86,11 @@ export default async function issueRoutes(app) {
   app.post("/issues/:id/subscribe", async (request) => {
     const { id } = request.params;
     const body = request.body;
-    if (!body.email) {
-      return app.httpErrors.badRequest("email is required");
+    const fields = ["email", "turnstile_token"];
+    for (const field of fields) {
+      if (!body[field]) {
+        return app.httpErrors.badRequest(`${field} is required`);
+      }
     }
     const issueResult = await query("SELECT id FROM issues WHERE id = $1", [
       id,
@@ -86,6 +98,13 @@ export default async function issueRoutes(app) {
     if (!issueResult.rowCount) {
       return app.httpErrors.notFound("Issue not found");
     }
+
+    try {
+      await verifyTurnstile(body.turnstile_token);
+    } catch (error) {
+      return app.httpErrors.badRequest("Captcha verification failed");
+    }
+
     const token = randomUUID();
     await query(
       "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",

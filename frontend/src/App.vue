@@ -19,9 +19,6 @@
         <IssueForm :location="newIssueLocation" @selectIssueTypeId="setNewIssueTypeId" @submit="onCreateIssue"
           @close="closePanel" />
       </template>
-
-      <EmailVerificationDialog v-if="pendingToken || tokenToVerify" :token="tokenToVerify || pendingToken"
-        @verified="onVerified" />
     </section>
   </main>
 </template>
@@ -31,7 +28,6 @@ import { ref, computed, onMounted } from "vue";
 import IssueMap from "./components/IssueMap.vue";
 import IssuePanel from "./components/IssuePanel.vue";
 import IssueForm from "./components/IssueForm.vue";
-import EmailVerificationDialog from "./components/EmailVerificationDialog.vue";
 import {
   loadIssues,
   loadIssue,
@@ -44,8 +40,6 @@ const selectedIssue = ref(null);
 const isLoadingSelectedIssue = ref(false);
 const newIssueLocation = ref(null);
 const newIssueTypeId = ref("anderes");
-const tokenToVerify = ref(null);
-const pendingToken = ref(null);
 
 async function selectIssue(issue) {
   newIssueLocation.value = null;
@@ -75,11 +69,6 @@ async function onCreateIssue(payload) {
   pendingToken.value = result.token;
 }
 
-async function onVerified() {
-  pendingToken.value = null;
-  tokenToVerify.value = null;
-}
-
 async function onCommentCreated() {
   selectedIssue.value = await loadIssue(selectedIssue.value.id);
 }
@@ -89,7 +78,15 @@ onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
-    tokenToVerify.value = token;
+    try {
+      await verifyToken(token);
+    } catch (error) {
+      alert("E-Mail-Bestätigungslink ist ungültig oder abgelaufen.");
+    } finally {
+      params.delete("token");
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, "", newUrl);
+    }
   }
 });
 </script>

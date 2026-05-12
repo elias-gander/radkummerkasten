@@ -15,19 +15,18 @@
       <input v-model="name" type="text" />
     </label>
 
-    <button type="submit" :disabled="submitting">
-      <span v-if="submitting">Wird übermittelt...</span>
-      <span v-else>Kommentar abschicken</span>
-    </button>
+    <progress v-if="submitting"></progress>
+    <button v-else type="submit" :disabled="!props.turnstileToken">Kommentar abschicken</button>
   </form>
 </template>
 
 <script setup>
+import VueTurnstile from "vue-turnstile";
 import { ref } from "vue";
 import { createComment, uploadImage } from "../services/api.js";
 import FileUpload from "./FileUpload.vue";
 
-const props = defineProps({ issueId: Number });
+const props = defineProps({ issueId: Number, turnstileToken: String });
 const emits = defineEmits(["created"]);
 
 const name = ref("");
@@ -56,6 +55,7 @@ async function submit() {
     const payload = {
       name: name.value,
       photos: photoUrls,
+      turnstile_token: turnstileToken.value,
     };
     await createComment(props.issueId, payload);
     name.value = "";

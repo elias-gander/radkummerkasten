@@ -70,9 +70,9 @@ export function voteIssue(issueId) {
   });
 }
 
-export function subscribeToIssue(issueId, email) {
+export function subscribeToIssue(issueId, email, turnstileToken) {
   return jsonRequest(`/issues/${issueId}/subscribe`, {
     method: "POST",
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, turnstile_token: turnstileToken }),
   });
 }
