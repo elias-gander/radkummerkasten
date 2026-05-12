@@ -3,9 +3,9 @@
     ×
   </button>
 
-  <h1>{{ issue.issue_type }}</h1>
+  <h1>{{ISSUE_TYPES.find((t) => t.id === issue.issue_type_id)?.label}}</h1>
 
-  <div class="secondary">von {{ issueDisplayName(issue) }} am {{ formatDateTime(issue.created_at) }}</div>
+  <div class="secondary">von {{ issue.name }} am {{ formatDateTime(issue.created_at) }}</div>
   <div>{{ issue.beschreibung }}</div>
 
   <div v-if="issue.photos?.length" class="photo-grid">
@@ -16,16 +16,23 @@
     Finde ich auch ({{ issue.upvotes }})
   </button>
 
+
   <h2>Kommentare ({{ issue.comments?.length || 0 }})</h2>
+
   <div v-for="comment in issue.comments" :key="comment.id" class="comment-card">
     <div>
-      <strong>{{ commentDisplayName(comment) }}</strong>
-      <p>{{ comment.email }}</p>
+      <strong>{{ comment.name }}</strong>
     </div>
     <div class="comment-photos" v-if="comment.photos?.length">
       <img v-for="photo in comment.photos" :key="photo.id" :src="photo.url" alt="Comment photo" />
     </div>
   </div>
+
+  <progress v-if="isSubscribing"></progress>
+  <span class="secondary" v-if="confirmationLinkSentTo">Bestätigungslink gesendet an {{ confirmationLinkSentTo }}</span>
+  <button v-else :disabled="isSubscribing" @click="subscribe" type="button">
+    Abonnieren
+  </button>
 
   <h3>Neuer Kommentar</h3>
   <CommentForm :issueId="issue.id" @created="created" />
@@ -33,17 +40,26 @@
 
 <script setup>
 import CommentForm from "./CommentForm.vue";
-import { voteIssue } from "../services/api.js";
-import { ref, onMounted } from "vue";
+import { voteIssue, subscribeToIssue } from "../services/api.js";
+import { ref, onMounted, watch } from "vue";
+import { ISSUE_TYPES } from "../constants.js";
 
 const props = defineProps({
-  issue: Object,
-  loadIssue: Function,
+  issue: Object
 });
 const emits = defineEmits(["commentCreated", "close"]);
 
 const voting = ref(false);
 const hasVoted = ref(false);
+const isSubscribing = ref(false);
+const confirmationLinkSentTo = ref(null);
+
+onMounted(() => {
+  const votedIssues = getVotedIssues();
+  hasVoted.value = votedIssues.includes(props.issue.id);
+});
+
+watch(() => props.issue.id, (newId) => { hasVoted.value = getVotedIssues().includes(newId) });
 
 function getVotedIssues() {
   const voted = localStorage.getItem('votedIssues');
@@ -55,11 +71,6 @@ function setVotedIssue(issueId) {
   voted.push(issueId);
   localStorage.setItem('votedIssues', JSON.stringify(voted));
 }
-
-onMounted(() => {
-  const votedIssues = getVotedIssues();
-  hasVoted.value = votedIssues.includes(props.issue.id);
-});
 
 async function vote() {
   if (voting.value || hasVoted.value) return;
@@ -81,6 +92,27 @@ function created() {
   emits("commentCreated");
 }
 
+async function subscribe() {
+  let email;
+  do {
+    email = prompt("Gib deine E-Mail-Adresse ein:");
+    if (email === null) {
+      return;
+    }
+  } while (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+  isSubscribing.value = true;
+  try {
+    await subscribeToIssue(props.issue.id, email);
+    confirmationLinkSentTo.value = email;
+  } catch (error) {
+    console.error(error);
+    alert("Fehler beim Abonnieren");
+  } finally {
+    isSubscribing.value = false;
+  }
+}
+
 function formatDateTime(dateString) {
   const date = new Date(dateString);
   return date.toLocaleString('de-DE', {
@@ -92,15 +124,4 @@ function formatDateTime(dateString) {
   });
 }
 
-function issueDisplayName(issue) {
-  return issue.nachname
-    ? `${issue.vorname} ${issue.nachname}`
-    : issue.vorname || "Unbekannt";
-}
-
-function commentDisplayName(comment) {
-  return comment.nachname
-    ? `${comment.vorname} ${comment.nachname}`
-    : comment.vorname || "Unbekannt";
-}
 </script>

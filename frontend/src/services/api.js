@@ -1,9 +1,14 @@
 const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 async function jsonRequest(path, options = {}) {
+  const headers = {
+    ...(options.headers || {}),
+    ...(options.body != null ? { "Content-Type": "application/json" } : {}),
+  };
+
   const response = await fetch(`${baseUrl}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
   });
   if (!response.ok) {
     const error = await response.text();
@@ -62,5 +67,12 @@ export function uploadImage(file) {
 export function voteIssue(issueId) {
   return jsonRequest(`/issues/${issueId}/vote`, {
     method: "POST",
+  });
+}
+
+export function subscribeToIssue(issueId, email) {
+  return jsonRequest(`/issues/${issueId}/subscribe`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
   });
 }

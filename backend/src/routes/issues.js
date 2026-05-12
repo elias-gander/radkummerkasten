@@ -6,7 +6,7 @@ import { ISSUE_TYPES } from "../constants.js";
 export default async function issueRoutes(app) {
   app.get("/issues", async () => {
     const result = await query(
-      "SELECT id, issue_type_id, beschreibung, upvotes, latitude, longitude FROM issues",
+      "SELECT id, issue_type_id, latitude, longitude FROM issues",
     );
     return result.rows;
   });
@@ -14,14 +14,14 @@ export default async function issueRoutes(app) {
   app.get("/issues/:id", async (request) => {
     const { id } = request.params;
     const result = await query(
-      "SELECT id, issue_type_id, beschreibung, vorname, nachname, email, upvotes, latitude, longitude, created_at FROM issues WHERE id = $1",
+      "SELECT id, issue_type_id, beschreibung, name, email, upvotes, latitude, longitude, created_at FROM issues WHERE id = $1",
       [id],
     );
     if (!result.rowCount) {
       return app.httpErrors.notFound("Issue not found");
     }
     const comments = await query(
-      "SELECT id, vorname, nachname, email, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
+      "SELECT id, name, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
       [id],
     );
     const photoRows = await query(
@@ -51,9 +51,7 @@ export default async function issueRoutes(app) {
     const fields = [
       "issue_type_id",
       "beschreibung",
-      "vorname",
-      "nachname",
-      "email",
+      "name",
       "latitude",
       "longitude",
     ];
@@ -69,6 +67,29 @@ export default async function issueRoutes(app) {
     await query(
       "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",
       [token, "issue", body],
+    );
+    if (body.email) {
+      await sendMagicLink(body.email, token);
+    }
+    return { status: "pending", token };
+  });
+
+  app.post("/issues/:id/subscribe", async (request) => {
+    const { id } = request.params;
+    const body = request.body;
+    if (!body.email) {
+      return app.httpErrors.badRequest("email is required");
+    }
+    const issueResult = await query("SELECT id FROM issues WHERE id = $1", [
+      id,
+    ]);
+    if (!issueResult.rowCount) {
+      return app.httpErrors.notFound("Issue not found");
+    }
+    const token = randomUUID();
+    await query(
+      "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",
+      [token, "subscription", { issue_id: Number(id), email: body.email }],
     );
     await sendMagicLink(body.email, token);
     return { status: "pending", token };

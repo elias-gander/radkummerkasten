@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import sensible from "@fastify/sensible";
 import dotenv from "dotenv";
 import issueRoutes from "./routes/issues.js";
 import commentRoutes from "./routes/comments.js";
@@ -13,6 +14,7 @@ const app = Fastify({ logger: true });
 await app.register(cors, {
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
 });
+await app.register(sensible);
 
 app.register(issueRoutes);
 app.register(commentRoutes);

@@ -20,13 +20,12 @@ export default async function verifyRoutes(app) {
     if (submission.type === "issue") {
       const body = submission.payload;
       const result = await query(
-        "INSERT INTO issues (issue_type_id, beschreibung, vorname, nachname, email, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        "INSERT INTO issues (issue_type_id, beschreibung, name, email, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
         [
           body.issue_type_id,
           body.beschreibung,
-          body.vorname,
-          body.nachname,
-          body.email,
+          body.name,
+          body.email || null,
           body.latitude,
           body.longitude,
         ],
@@ -39,13 +38,19 @@ export default async function verifyRoutes(app) {
           ]);
         }
       }
+      if (body.email) {
+        await query(
+          "INSERT INTO subscriptions (issue_id, email) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [result.rows[0].id, body.email],
+        );
+      }
       return { status: "created", issue_id: result.rows[0].id };
     }
     if (submission.type === "comment") {
       const body = submission.payload;
       const result = await query(
-        "INSERT INTO comments (issue_id, vorname, nachname, email) VALUES ($1, $2, $3, $4) RETURNING id",
-        [body.issue_id, body.vorname, body.nachname, body.email],
+        "INSERT INTO comments (issue_id, name) VALUES ($1, $2) RETURNING id",
+        [body.issue_id, body.name],
       );
       if (body.photos && Array.isArray(body.photos)) {
         for (const url of body.photos) {
@@ -56,6 +61,14 @@ export default async function verifyRoutes(app) {
         }
       }
       return { status: "created", comment_id: result.rows[0].id };
+    }
+    if (submission.type === "subscription") {
+      const body = submission.payload;
+      await query(
+        "INSERT INTO subscriptions (issue_id, email) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [body.issue_id, body.email],
+      );
+      return { status: "subscribed" };
     }
     return app.httpErrors.badRequest("Unknown submission type");
   });

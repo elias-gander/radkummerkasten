@@ -5,7 +5,11 @@
         :selectedIssueId="selectedIssue?.id" @selectIssue="selectIssue" @mapClick="setNewIssueLocation" />
     </section>
 
-    <section class="panel-column" :class="{ open: isPanelOpen }">
+    <section class="panel-column" :class="{ open: selectedIssue || newIssueLocation }">
+      <template v-if="isLoadingSelectedIssue">
+        <progress></progress>
+      </template>
+
       <template v-if="selectedIssue">
         <IssuePanel :issue="selectedIssue" :loadIssue="loadSelectedIssue" @commentCreated="onCommentCreated"
           @close="closePanel" />
@@ -34,30 +38,21 @@ import {
   createIssue,
   verifyToken,
 } from "./services/api.js";
-import { ISSUE_TYPES } from "./constants.js";
 
 const issues = ref([]);
 const selectedIssue = ref(null);
+const isLoadingSelectedIssue = ref(false);
 const newIssueLocation = ref(null);
 const newIssueTypeId = ref("anderes");
 const tokenToVerify = ref(null);
 const pendingToken = ref(null);
 
-const isPanelOpen = computed(() => !!selectedIssue.value || !!newIssueLocation.value);
-
-
-async function refreshIssues() {
-  issues.value = await loadIssues();
-}
-
-async function loadSelectedIssue(id) {
-  selectedIssue.value = await loadIssue(id);
-}
-
-function selectIssue(issue) {
+async function selectIssue(issue) {
   newIssueLocation.value = null;
   newIssueTypeId.value = "anderes";
-  loadSelectedIssue(issue.id);
+  isLoadingSelectedIssue.value = true;
+  selectedIssue.value = await loadIssue(issue.id);
+  isLoadingSelectedIssue.value = false;
 }
 
 function closePanel() {
@@ -83,17 +78,14 @@ async function onCreateIssue(payload) {
 async function onVerified() {
   pendingToken.value = null;
   tokenToVerify.value = null;
-  await refreshIssues();
 }
 
 async function onCommentCreated() {
-  if (selectedIssue.value) {
-    await loadSelectedIssue(selectedIssue.value.id);
-  }
+  selectedIssue.value = await loadIssue(selectedIssue.value.id);
 }
 
 onMounted(async () => {
-  await refreshIssues();
+  issues.value = await loadIssues();
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {

@@ -96,9 +96,9 @@ main {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 50%;
-  min-width: 320px;
-  max-width: 450px;
+  width: 30%;
+  min-width: 350px;
+  max-width: 500px;
   padding: 1rem;
   background: #fbfbfb;
   transform: translateX(100%);

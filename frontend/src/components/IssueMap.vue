@@ -159,6 +159,7 @@ onMounted(() => {
         "text-field": "{point_count}",
         "text-size": 20,
         "text-font": ["Open Sans Regular"],
+        "text-allow-overlap": true,
       },
       paint: {
         "text-color": "#000000",

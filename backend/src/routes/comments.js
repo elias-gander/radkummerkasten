@@ -6,7 +6,7 @@ export default async function commentRoutes(app) {
   app.get("/issues/:id/comments", async (request) => {
     const { id } = request.params;
     const result = await query(
-      "SELECT id, vorname, nachname, email, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
+      "SELECT id, name, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
       [id],
     );
     return result.rows;
@@ -15,7 +15,7 @@ export default async function commentRoutes(app) {
   app.post("/issues/:id/comments", async (request) => {
     const { id } = request.params;
     const body = request.body;
-    const fields = ["vorname", "nachname", "email"];
+    const fields = ["name"];
     for (const field of fields) {
       if (!body[field]) {
         return app.httpErrors.badRequest(`${field} is required`);
@@ -32,7 +32,6 @@ export default async function commentRoutes(app) {
       "INSERT INTO pending_submissions (token, type, payload) VALUES ($1, $2, $3)",
       [token, "comment", { issue_id: Number(id), ...body }],
     );
-    await sendMagicLink(body.email, token);
     return { status: "pending", token };
   });
 }

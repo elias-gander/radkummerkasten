@@ -14,10 +14,6 @@
       Name
       <input v-model="name" type="text" />
     </label>
-    <label>
-      E-Mail
-      <input v-model="email" type="email" />
-    </label>
 
     <button type="submit" :disabled="submitting">
       <span v-if="submitting">Wird übermittelt...</span>
@@ -35,7 +31,6 @@ const props = defineProps({ issueId: Number });
 const emits = defineEmits(["created"]);
 
 const name = ref("");
-const email = ref("");
 const files = ref([]);
 const submitting = ref(false);
 
@@ -59,14 +54,11 @@ async function submit() {
     }
 
     const payload = {
-      vorname: name.value,
-      nachname: "",
-      email: email.value,
+      name: name.value,
       photos: photoUrls,
     };
     await createComment(props.issueId, payload);
     name.value = "";
-    email.value = "";
     files.value = [];
     emits("created");
   } finally {

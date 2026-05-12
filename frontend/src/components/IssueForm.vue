@@ -38,8 +38,8 @@
     </label>
 
     <label>
-      E-Mail
-      <input v-model="email" type="email" required />
+      E-Mail (optional, für Benachrichtigungen)
+      <input v-model="email" type="email" />
     </label>
 
     <progress v-if="submitting" aria-label="Wird übermittelt"></progress>
@@ -130,8 +130,7 @@ async function submit() {
     emits("submit", {
       issue_type_id: issueTypeId.value,
       beschreibung: beschreibung.value,
-      vorname: name.value,
-      nachname: "",
+      name: name.value,
       email: email.value,
       latitude: latitude.value,
       longitude: longitude.value,
