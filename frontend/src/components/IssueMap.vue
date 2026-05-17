@@ -8,12 +8,12 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const props = defineProps({
-  issues: { type: Array },
-  newIssueLocation: Object,
-  newIssueTypeId: String,
-  selectedIssueId: Number,
+  issues: { type: Array, required: true },
+  newIssueLocation: { type: [{ latitude: Number, longitude: Number }, null], required: true },
+  newIssueTypeId: { type: String, required: true },
+  selectedIssueId: { type: [Number, null], required: true },
 });
-const emits = defineEmits(["selectIssue", "mapClick"]);
+const emits = defineEmits(["doneLoading", "selectIssue", "mapClick"]);
 
 const mapContainer = ref(null);
 let map;
@@ -145,7 +145,8 @@ onMounted(() => {
       source: ISSUES_SOURCE_ID,
       filter: ["has", "point_count"],
       paint: {
-        "circle-color": "#ff6600",
+        "circle-color": "#004c67",
+        "circle-opacity": 0.75,
         "circle-radius": ["step", ["get", "point_count"], 20, 10, 28, 30, 36],
       },
     });
@@ -158,11 +159,11 @@ onMounted(() => {
       layout: {
         "text-field": "{point_count}",
         "text-size": 20,
-        "text-font": ["Open Sans Regular"],
+        "text-font": ["Open Sans Bold"],
         "text-allow-overlap": true,
       },
       paint: {
-        "text-color": "#000000",
+        "text-color": "#fff",
       },
     });
 
@@ -183,6 +184,7 @@ onMounted(() => {
       source: CREATE_SOURCE_ID,
       layout: {
         "icon-image": ["concat", "selected-", ["get", "issue_type_id"]],
+        "icon-offset": [20, -16],
         "icon-allow-overlap": true,
       },
     });
@@ -218,7 +220,7 @@ onMounted(() => {
       const feature = event.features && event.features[0];
       if (!feature) return;
 
-      emits("selectIssue", { id: Number(feature.properties.id) });
+      emits("selectIssue", Number(feature.properties.id));
     });
 
     map.on("click", (event) => {
@@ -239,10 +241,23 @@ onMounted(() => {
     updateSource();
     updateCreateMarker();
   });
+
+  map.on("idle", () => {
+    emits("doneLoading");
+  });
 });
 
+
 watch(() => props.issues, updateSource, { deep: true });
-watch(() => props.selectedIssueId, updateSource);
+watch(() => props.selectedIssueId, (newSelectedIssueId) => {
+  updateSource();
+  if (map?.getZoom() < 15) {
+    const newSelectedIssue = props.issues.find(issue => issue.id === newSelectedIssueId);
+    map?.easeTo({
+      center: [newSelectedIssue.longitude, newSelectedIssue.latitude], zoom: 15
+    });
+  }
+});
 watch(
   [() => props.newIssueLocation, () => props.newIssueTypeId],
   updateCreateMarker,

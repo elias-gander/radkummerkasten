@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js",
-    "start": "node src/index.js"
+    "dev": "dotenv -e .env.development node src/index.js",
+    "start": "dotenv -e .env.production node src/index.js"
   },
   "dependencies": {
-    "@fastify/cors": "^9.0.0",
-    "@fastify/sensible": "^5.6.0",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/sensible": "^6.0.4",
     "dotenv": "^16.0.0",
-    "fastify": "^4.0.0",
+    "dotenv-cli": "^4.0.0",
+    "fastify": "^5.8.5",
     "node-fetch": "^3.0.0",
     "pg": "^8.0.0",
     "uuid": "^9.0.0"

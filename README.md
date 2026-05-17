@@ -30,19 +30,7 @@ cd ../frontend
 npm install
 ```
 
-4. Copy `backend/.env.example` to `backend/.env` and update the following variables:
-   - `DATABASE_URL`: PostgreSQL connection string
-   - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_IMAGES_NAMESPACE`: For image uploads
-   - `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile secret key (get from Cloudflare dashboard)
-   - `FRONTEND_URL`: Your frontend URL
-
-5. Update the Turnstile site key in the frontend components:
-   - Replace `0x4AAAAAAA_example_site_key` with your actual site key in:
-     - `frontend/src/components/IssueForm.vue`
-     - `frontend/src/components/CommentForm.vue`
-     - `frontend/src/components/IssuePanel.vue`
-
-6. Start the backend and frontend:
+5. Start the backend and frontend:
 
 ```bash
 cd backend
@@ -54,7 +42,7 @@ cd ../frontend
 npm run dev
 ```
 
-7. Open `http://localhost:5173`.
+6. Open `http://localhost:5173`.
 
 ## Notes
 

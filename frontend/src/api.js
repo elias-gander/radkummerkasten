@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const baseUrl = import.meta.env.VITE_API_URL;
 
 async function jsonRequest(path, options = {}) {
   const headers = {
@@ -14,7 +14,10 @@ async function jsonRequest(path, options = {}) {
     const error = await response.text();
     throw new Error(error || response.statusText);
   }
-  return response.json();
+
+  return response.headers.get("content-type")?.includes("application/json")
+    ? response.json()
+    : response.text();
 }
 
 async function formRequest(path, formData) {
@@ -38,30 +41,38 @@ export function loadIssue(id) {
 }
 
 export function createIssue(payload) {
-  return jsonRequest("/issues", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const formData = new FormData();
+  formData.append("issue_type_id", payload.issueTypeId);
+  formData.append("latitude", payload.latitude);
+  formData.append("longitude", payload.longitude);
+  formData.append("name", payload.name);
+  formData.append("description", payload.description);
+  formData.append("email", payload.email);
+  formData.append("turnstile_token", payload.turnstileToken);
+  for (const file of payload.files) {
+    formData.append("files", file);
+  }
+
+  return formRequest("/issues", formData);
 }
 
 export function createComment(issueId, payload) {
-  return jsonRequest(`/issues/${issueId}/comments`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const formData = new FormData();
+  formData.append("name", payload.name);
+  formData.append("text", payload.text);
+  formData.append("turnstile_token", payload.turnstileToken);
+  for (const file of payload.files) {
+    formData.append("files", file);
+  }
+
+  return formRequest(`/issues/${issueId}/comments`, formData);
 }
 
-export function verifyToken(token) {
-  return jsonRequest("/verify", {
+export function confirmSubscription(token) {
+  return jsonRequest(`/issues/confirm-subscription`, {
     method: "POST",
     body: JSON.stringify({ token }),
   });
-}
-
-export function uploadImage(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-  return formRequest("/upload", formData);
 }
 
 export function voteIssue(issueId) {

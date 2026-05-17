@@ -1,18 +1,18 @@
 <template>
   <form @submit.prevent="submit">
     <label>
+      Name
+      <input v-model="name" type="text" required />
+    </label>
+
+    <label>
       Kommentar
-      <textarea v-model="comment" rows="4" required></textarea>
+      <textarea v-model="text" rows="4" required></textarea>
     </label>
 
     <label>
       Fotos (optional)
-      <FileUpload v-model="files" :max-upload-size="MAX_UPLOAD_SIZE" @files-changed="onFilesChanged" />
-    </label>
-
-    <label>
-      Name
-      <input v-model="name" type="text" />
+      <FileUpload v-model="files" :max-upload-size="MAX_UPLOAD_SIZE" />
     </label>
 
     <progress v-if="submitting"></progress>
@@ -21,9 +21,8 @@
 </template>
 
 <script setup>
-import VueTurnstile from "vue-turnstile";
 import { ref } from "vue";
-import { createComment, uploadImage } from "../services/api.js";
+import { createComment } from "../api.js";
 import FileUpload from "./FileUpload.vue";
 
 const props = defineProps({ issueId: Number, turnstileToken: String });
@@ -34,10 +33,7 @@ const files = ref([]);
 const submitting = ref(false);
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB in bytes
-
-function onFilesChanged(updatedFiles) {
-  files.value = updatedFiles;
-}
+const text = ref("");
 
 async function submit() {
   submitting.value = true;
@@ -54,11 +50,13 @@ async function submit() {
 
     const payload = {
       name: name.value,
+      text: text.value,
       photos: photoUrls,
-      turnstile_token: turnstileToken.value,
+      turnstile_token: props.turnstileToken,
     };
     await createComment(props.issueId, payload);
     name.value = "";
+    text.value = "";
     files.value = [];
     emits("created");
   } finally {

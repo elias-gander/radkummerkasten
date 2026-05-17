@@ -1,71 +1,73 @@
 <template>
-  <button class="panel-close" type="button" @click="$emit('close')" aria-label="Schließen">
-    ×
-  </button>
+  <progress v-if="isLoadingIssue"></progress>
 
-  <h1>{{ISSUE_TYPES.find((t) => t.id === issue.issue_type_id)?.label}}</h1>
+  <template v-else>
+    <h1>{{ISSUE_TYPES.find(t => t.id === issue?.issue_type_id)?.label}}</h1>
 
-  <div class="secondary">von {{ issue.name }} am {{ formatDateTime(issue.created_at) }}</div>
-  <div>{{ issue.beschreibung }}</div>
+    <div class="secondary">von {{ issue?.name }} am {{ formatDateTime(issue?.created_at) }}</div>
+    <div>{{ issue?.description }}</div>
 
-  <div v-if="issue.photos?.length" class="photo-grid">
-    <img v-for="photo in issue.photos" :key="photo.id" :src="photo.url" alt="Issue photo" />
-  </div>
-
-  <button :disabled="voting || hasVoted" @click="vote" type="button">
-    Finde ich auch ({{ issue.upvotes }})
-  </button>
-
-
-  <h2>Kommentare ({{ issue.comments?.length || 0 }})</h2>
-
-  <div v-for="comment in issue.comments" :key="comment.id" class="comment-card">
-    <div>
-      <strong>{{ comment.name }}</strong>
+    <div v-if="issue?.photos?.length" class="photo-grid">
+      <img v-for="photo in issue?.photos" :key="photo.id" :src="photo.url" alt="Issue photo" />
     </div>
-    <div class="comment-photos" v-if="comment.photos?.length">
-      <img v-for="photo in comment.photos" :key="photo.id" :src="photo.url" alt="Comment photo" />
+
+    <button :disabled="voting || hasVoted" @click="vote" type="button">
+      Finde ich auch ({{ issue?.upvotes }})
+    </button>
+
+    <h2>Kommentare ({{ issue?.comments?.length || 0 }})</h2>
+
+    <div v-for="comment in issue?.comments" :key="comment.id" class="comment-card">
+      <div class="secondary">von {{ comment.name }} am {{ formatDateTime(comment.created_at) }}</div>
+      <div>{{ comment.text }}</div>
+      <div class="comment-photos" v-if="comment.photos?.length">
+        <img v-for="photo in comment.photos" :key="photo.id" :src="photo.url" alt="Comment photo" />
+      </div>
     </div>
-  </div>
 
-  <progress v-if="isSubscribing"></progress>
-  <span class="secondary" v-if="confirmationLinkSentTo">Bestätigungslink gesendet an {{ confirmationLinkSentTo }}</span>
+    <progress v-if="isSubscribing"></progress>
+    <span class="secondary" v-if="confirmationLinkSentTo">Bestätigungslink gesendet an {{ confirmationLinkSentTo
+    }}</span>
 
-  <button v-else :disabled="!turnstileToken" @click="subscribe" type="button">
-    Abonnieren
-  </button>
+    <button v-else :disabled="!props.turnstileToken" @click="subscribe" type="button">
+      Abonnieren
+    </button>
 
-  <VueTurnstile site-key="0x4AAAAAADOEW46W4_4pBs09" v-model="turnstileToken" theme="light"
-    appearance="interaction-only" />
-
-  <h3>Neuer Kommentar</h3>
-  <CommentForm :issueId="issue.id" :turnstileToken="turnstileToken" @created="created" />
+    <h3>Neuer Kommentar</h3>
+    <CommentForm :issueId="props.issueId" :turnstileToken="props.turnstileToken" @created="created" />
+  </template>
 </template>
 
 <script setup>
-import VueTurnstile from "vue-turnstile";
 import CommentForm from "./CommentForm.vue";
-import { voteIssue, subscribeToIssue } from "../services/api.js";
+import { voteIssue, subscribeToIssue, loadIssue } from "../api.js";
 import { ref, onMounted, watch } from "vue";
 import { ISSUE_TYPES } from "../constants.js";
 
 const props = defineProps({
-  issue: Object
+  issueId: { type: [Number, null], required: true },
+  turnstileToken: { type: [String, null], required: true },
 });
-const emits = defineEmits(["commentCreated", "close"]);
+const emits = defineEmits(["commentCreated"]);
 
+const isLoadingIssue = ref(false);
+const issue = ref(null);
 const voting = ref(false);
 const hasVoted = ref(false);
 const isSubscribing = ref(false);
 const confirmationLinkSentTo = ref(null);
-const turnstileToken = ref("");
 
 onMounted(() => {
   const votedIssues = getVotedIssues();
-  hasVoted.value = votedIssues.includes(props.issue.id);
+  hasVoted.value = votedIssues.includes(props.issueId);
 });
 
-watch(() => props.issue.id, (newId) => { hasVoted.value = getVotedIssues().includes(newId) });
+watch(() => props.issueId, async (newId) => {
+  isLoadingIssue.value = true;
+  issue.value = await loadIssue(newId);
+  hasVoted.value = getVotedIssues().includes(newId)
+  isLoadingIssue.value = false;
+}, { immediate: true });
 
 function getVotedIssues() {
   const voted = localStorage.getItem('votedIssues');
@@ -109,7 +111,7 @@ async function subscribe() {
 
   isSubscribing.value = true;
   try {
-    await subscribeToIssue(props.issue.id, email, turnstileToken.value);
+    await subscribeToIssue(props.issue.id, email, props.turnstileToken);
     confirmationLinkSentTo.value = email;
   } catch (error) {
     console.error(error);

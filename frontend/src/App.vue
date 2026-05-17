@@ -1,85 +1,106 @@
 <template>
   <main>
+    <progress class="loading-issues-indicator" v-if="isLoadingIssues"></progress>
+
     <section class="map-column">
       <IssueMap :issues="issues" :newIssueLocation="newIssueLocation" :newIssueTypeId="newIssueTypeId"
-        :selectedIssueId="selectedIssue?.id" @selectIssue="selectIssue" @mapClick="setNewIssueLocation" />
+        :selectedIssueId="selectedIssueId" @doneLoading="hideMapLoadingIndicator" @selectIssue="onSelectIssue"
+        @mapClick="onMapClick" />
     </section>
 
-    <section class="panel-column" :class="{ open: selectedIssue || newIssueLocation }">
-      <template v-if="isLoadingSelectedIssue">
-        <progress></progress>
-      </template>
+    <section class="panel-column" :class="{ open: selectedIssueId || newIssueLocation }">
+      <div>
+        <button class="panel-close" type="button" @click="closePanel">
+          ×
+        </button>
 
-      <template v-if="selectedIssue">
-        <IssuePanel :issue="selectedIssue" :loadIssue="loadSelectedIssue" @commentCreated="onCommentCreated"
-          @close="closePanel" />
-      </template>
+        <template v-if="selectedIssueId">
+          <IssuePanel :issueId="selectedIssueId" :turnstileToken="turnstileToken" />
+        </template>
 
-      <template v-else-if="newIssueLocation">
-        <IssueForm :location="newIssueLocation" @selectIssueTypeId="setNewIssueTypeId" @submit="onCreateIssue"
-          @close="closePanel" />
-      </template>
+        <template v-else-if="newIssueLocation">
+          <IssueForm :location="newIssueLocation" :turnstileToken="turnstileToken"
+            @selectIssueTypeId="setNewIssueTypeId" @createIssue="onCreateIssue" />
+        </template>
+
+        <VueTurnstile :site-key="turnstileSiteKey" v-model="turnstileToken" theme="light" appearance="interaction-only"
+          language="de" />
+      </div>
     </section>
   </main>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import VueTurnstile from "vue-turnstile";
+import { ref, watch, onMounted } from "vue";
 import IssueMap from "./components/IssueMap.vue";
 import IssuePanel from "./components/IssuePanel.vue";
 import IssueForm from "./components/IssueForm.vue";
 import {
   loadIssues,
-  loadIssue,
-  createIssue,
-  verifyToken,
-} from "./services/api.js";
+  confirmSubscription,
+} from "./api.js";
 
+const isLoadingIssues = ref(false);
 const issues = ref([]);
-const selectedIssue = ref(null);
-const isLoadingSelectedIssue = ref(false);
+const selectedIssueId = ref(null);
 const newIssueLocation = ref(null);
 const newIssueTypeId = ref("anderes");
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+const turnstileToken = ref("");
 
-async function selectIssue(issue) {
+watch(selectedIssueId, (newValue) => {
+  const url = new URL(window.location.href)
+  if (newValue) {
+    url.searchParams.set("issue", newValue)
+  } else {
+    url.searchParams.delete("issue")
+  }
+  window.history.replaceState({}, '', url)
+});
+
+async function onSelectIssue(id) {
   newIssueLocation.value = null;
   newIssueTypeId.value = "anderes";
-  isLoadingSelectedIssue.value = true;
-  selectedIssue.value = await loadIssue(issue.id);
-  isLoadingSelectedIssue.value = false;
+  selectedIssueId.value = id;
+}
+
+async function onCreateIssue(issue) {
+  issues.value.push(issue);
+  selectedIssueId.value = issue.id;
 }
 
 function closePanel() {
-  selectedIssue.value = null;
+  selectedIssueId.value = null;
   newIssueLocation.value = null;
   newIssueTypeId.value = "anderes";
 }
 
-function setNewIssueLocation(coords) {
-  selectedIssue.value = null;
-  newIssueLocation.value = coords;
+function onMapClick(coords) {
+  if (selectedIssueId.value) {
+    selectedIssueId.value = null;
+  } else {
+    newIssueLocation.value = coords;
+  }
 }
 
 function setNewIssueTypeId(issueTypeId) {
   newIssueTypeId.value = issueTypeId;
 }
 
-async function onCreateIssue(payload) {
-  const result = await createIssue(payload);
-  pendingToken.value = result.token;
-}
-
-async function onCommentCreated() {
-  selectedIssue.value = await loadIssue(selectedIssue.value.id);
+function hideMapLoadingIndicator() {
+  isLoadingIssues.value = false;
 }
 
 onMounted(async () => {
+  isLoadingIssues.value = true;
   issues.value = await loadIssues();
+
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
     try {
-      await verifyToken(token);
+      await confirmSubscription(token);
     } catch (error) {
       alert("E-Mail-Bestätigungslink ist ungültig oder abgelaufen.");
     } finally {
@@ -87,6 +108,10 @@ onMounted(async () => {
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, "", newUrl);
     }
+  }
+  const issueId = Number(params.get("issue"));
+  if (issueId) {
+    onSelectIssue(issueId);
   }
 });
 </script>

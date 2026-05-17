@@ -2,25 +2,21 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import dotenv from "dotenv";
-import issueRoutes from "./routes/issues.js";
-import commentRoutes from "./routes/comments.js";
-import verifyRoutes from "./routes/verify.js";
-import uploadRoutes from "./routes/upload.js";
+import routes from "./routes.js";
+import multipart from "@fastify/multipart";
 
 dotenv.config();
 
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: process.env.FRONTEND_URL,
 });
 await app.register(sensible);
+await app.register(multipart);
 
-app.register(issueRoutes);
-app.register(commentRoutes);
-app.register(verifyRoutes);
-app.register(uploadRoutes);
+app.register(routes);
 
-const port = Number(process.env.PORT || 4000);
+const port = Number(process.env.PORT);
 await app.listen({ port, host: "0.0.0.0" });
 console.log(`Backend running on http://localhost:${port}`);
