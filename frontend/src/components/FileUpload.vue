@@ -1,45 +1,59 @@
 <template>
-  <input ref="filesInput" type="file" accept="image/*" multiple @change="onFilesChange" />
-  <div v-if="totalFileSize > maxUploadSize" class="filesize-error">
-    {{ formatFileSize(totalFileSize) }} / {{ formatFileSize(maxUploadSize) }}
+  <input type="file" accept="image/*" multiple @change="onFilesChange" />
+
+  <div v-if="!isWithinFileSizeLimit" class="filesize-error">
+    {{ formatFileSize(totalFileSize) }} /
+    {{ formatFileSize(MAX_UPLOAD_SIZE) }}
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
-  maxUploadSize: {
-    type: Number
-  },
   modelValue: {
     type: Array,
-    default: () => [],
+    required: true,
+  },
+  isWithinFileSizeLimit: {
+    type: Boolean,
+    required: true
   },
 });
 
-const files = ref([...props.modelValue]);
-const filesInput = ref(null);
+const emit = defineEmits(["update:modelValue", "update:isWithinFileSizeLimit"]);
 
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
 const totalFileSize = computed(() =>
-  files.value.reduce((sum, file) => sum + file.size, 0),
+  props.modelValue.reduce((sum, file) => sum + file.size, 0)
+);
+const isWithinFileSizeLimit = computed(
+  () => totalFileSize.value <= MAX_UPLOAD_SIZE
+);
+
+watch(
+  isWithinFileSizeLimit,
+  (value) => {
+    emit("update:isWithinFileSizeLimit", value);
+  },
+  { immediate: true }
 );
 
 function onFilesChange(event) {
-  const newFiles = Array.from(event?.target?.files ?? []);
-  files.value = newFiles;
-  const dt = new DataTransfer();
-  files.value.forEach(file => {
-    dt.items.add(file);
-  });
-  filesInput.value.files = dt.files;
+  emit("update:modelValue", Array.from(event?.target?.files ?? []));
 }
 
 function formatFileSize(bytes) {
-  if (bytes === 0) return "0B";
+  if (bytes === 0) return "0 B";
+
   const k = 1024;
-  const sizes = ["B", "KB", "MB"];
+  const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + sizes[i];
+
+  return (
+    Math.round((bytes / Math.pow(k, i)) * 100) / 100 +
+    " " +
+    sizes[i]
+  );
 }
 </script>

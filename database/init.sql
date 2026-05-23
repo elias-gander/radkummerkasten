@@ -16,7 +16,7 @@ CREATE TABLE issues (
   name text NOT NULL,
   email text,
   upvotes integer NOT NULL DEFAULT 0,
-  photo_urls text[] DEFAULT '{}',
+  photo_count integer NOT NULL DEFAULT 0,
   latitude numeric(9,6) NOT NULL,
   longitude numeric(9,6) NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -27,7 +27,7 @@ CREATE TABLE comments (
   issue_id integer NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
   name text NOT NULL,
   text text NOT NULL,
-  photo_urls text[] DEFAULT '{}',
+  photo_count integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

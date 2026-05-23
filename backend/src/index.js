@@ -13,7 +13,11 @@ await app.register(cors, {
   origin: process.env.FRONTEND_URL,
 });
 await app.register(sensible);
-await app.register(multipart);
+await app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+});
 
 app.register(routes);
 

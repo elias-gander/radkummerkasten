@@ -5,23 +5,28 @@
     <h1>{{ISSUE_TYPES.find(t => t.id === issue?.issue_type_id)?.label}}</h1>
 
     <div class="secondary">von {{ issue?.name }} am {{ formatDateTime(issue?.created_at) }}</div>
-    <div>{{ issue?.description }}</div>
+    <div class="text-body">{{ issue?.description }}</div>
 
-    <div v-if="issue?.photos?.length" class="photo-grid">
-      <img v-for="photo in issue?.photos" :key="photo.id" :src="photo.url" alt="Issue photo" />
+    <div v-if="issue?.photo_count > 0" class="photo-grid">
+      <img v-for="(_, index) in issue.photo_count" :key="index" :src="`${cloudflarePublicUrl}/${issue?.id}-${index}`"
+        @click="emits('openPhoto', `${cloudflarePublicUrl}/${issue?.id}-${index}`)" />
     </div>
 
-    <button :disabled="voting || hasVoted" @click="vote" type="button">
+    <button :disabled="isVoting || hasVoted" @click="vote" type="button">
       Finde ich auch ({{ issue?.upvotes }})
     </button>
 
     <h2>Kommentare ({{ issue?.comments?.length || 0 }})</h2>
 
-    <div v-for="comment in issue?.comments" :key="comment.id" class="comment-card">
+    <div v-for="comment in issue?.comments" :key="comment.id" class="comment-container">
       <div class="secondary">von {{ comment.name }} am {{ formatDateTime(comment.created_at) }}</div>
-      <div>{{ comment.text }}</div>
-      <div class="comment-photos" v-if="comment.photos?.length">
-        <img v-for="photo in comment.photos" :key="photo.id" :src="photo.url" alt="Comment photo" />
+      <div class="comment-body">
+        <div class="text-body">{{ comment.text }}</div>
+        <div class="photo-grid" v-if="comment.photo_count > 0">
+          <img v-for="(_, index) in comment.photo_count" :key="index"
+            :src="`${cloudflarePublicUrl}/${issue?.id}-${comment.id}-${index}`"
+            @click="emits('openPhoto', `${cloudflarePublicUrl}/${issue?.id}-${comment.id}-${index}`)" />
+        </div>
       </div>
     </div>
 
@@ -34,7 +39,7 @@
     </button>
 
     <h3>Neuer Kommentar</h3>
-    <CommentForm :issueId="props.issueId" :turnstileToken="props.turnstileToken" @created="created" />
+    <CommentForm :issueId="props.issueId" :turnstileToken="props.turnstileToken" @created="refreshIssue" />
   </template>
 </template>
 
@@ -45,33 +50,31 @@ import { ref, onMounted, watch } from "vue";
 import { ISSUE_TYPES } from "../constants.js";
 
 const props = defineProps({
-  issueId: { type: [Number, null], required: true },
+  issueId: { type: Number, required: true },
   turnstileToken: { type: [String, null], required: true },
 });
-const emits = defineEmits(["commentCreated"]);
+const emits = defineEmits(["openPhoto"]);
 
+const cloudflarePublicUrl = import.meta.env.VITE_CLOUDFLARE_PUBLIC_URL;
 const isLoadingIssue = ref(false);
 const issue = ref(null);
-const voting = ref(false);
+const isVoting = ref(false);
 const hasVoted = ref(false);
 const isSubscribing = ref(false);
 const confirmationLinkSentTo = ref(null);
 
-onMounted(() => {
-  const votedIssues = getVotedIssues();
-  hasVoted.value = votedIssues.includes(props.issueId);
-});
-
-watch(() => props.issueId, async (newId) => {
-  isLoadingIssue.value = true;
-  issue.value = await loadIssue(newId);
-  hasVoted.value = getVotedIssues().includes(newId)
-  isLoadingIssue.value = false;
-}, { immediate: true });
+watch(() => props.issueId, refreshIssue, { immediate: true });
 
 function getVotedIssues() {
   const voted = localStorage.getItem('votedIssues');
   return voted ? JSON.parse(voted) : [];
+}
+
+async function refreshIssue() {
+  isLoadingIssue.value = true;
+  issue.value = await loadIssue(props.issueId);
+  hasVoted.value = getVotedIssues().includes(props.issueId);
+  isLoadingIssue.value = false;
 }
 
 function setVotedIssue(issueId) {
@@ -81,23 +84,15 @@ function setVotedIssue(issueId) {
 }
 
 async function vote() {
-  if (voting.value || hasVoted.value) return;
-
-  voting.value = true;
+  isVoting.value = true;
   try {
-    await voteIssue(props.issue.id);
-    setVotedIssue(props.issue.id);
+    await voteIssue(props.issueId);
+    setVotedIssue(props.issueId);
     hasVoted.value = true;
-    props.issue.upvotes += 1;
-  } catch (error) {
-    console.error(error);
+    issue.value.upvotes += 1;
   } finally {
-    voting.value = false;
+    isVoting.value = false;
   }
-}
-
-function created() {
-  emits("commentCreated");
 }
 
 async function subscribe() {
@@ -111,7 +106,7 @@ async function subscribe() {
 
   isSubscribing.value = true;
   try {
-    await subscribeToIssue(props.issue.id, email, props.turnstileToken);
+    await subscribeToIssue(props.issueId, email, props.turnstileToken);
     confirmationLinkSentTo.value = email;
   } catch (error) {
     console.error(error);
@@ -131,5 +126,4 @@ function formatDateTime(dateString) {
     minute: '2-digit',
   });
 }
-
 </script>

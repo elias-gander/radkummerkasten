@@ -12,11 +12,12 @@
 
     <label>
       Fotos (optional)
-      <FileUpload v-model="files" :max-upload-size="MAX_UPLOAD_SIZE" />
+      <FileUpload v-model="files" v-model:isWithinFileSizeLimit="isWithinFileSizeLimit" />
     </label>
 
-    <progress v-if="submitting"></progress>
-    <button v-else type="submit" :disabled="!props.turnstileToken">Kommentar abschicken</button>
+    <progress v-if="isSubmitting"></progress>
+    <button v-else type="submit" :disabled="!props.turnstileToken || !isWithinFileSizeLimit">Kommentar
+      abschicken</button>
   </form>
 </template>
 
@@ -25,34 +26,24 @@ import { ref } from "vue";
 import { createComment } from "../api.js";
 import FileUpload from "./FileUpload.vue";
 
-const props = defineProps({ issueId: Number, turnstileToken: String });
+const props = defineProps({ issueId: { type: Number, required: true }, turnstileToken: { type: [String, null], required: true } });
 const emits = defineEmits(["created"]);
 
 const name = ref("");
 const files = ref([]);
-const submitting = ref(false);
-
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB in bytes
+const isSubmitting = ref(false);
 const text = ref("");
+const isWithinFileSizeLimit = ref(true);
 
 async function submit() {
-  submitting.value = true;
-
+  isSubmitting.value = true;
+  console.log(files.value);
   try {
-    let photoUrls;
-
-    if (files.value.length) {
-      const uploads = await Promise.all(
-        files.value.map((file) => uploadImage(file)),
-      );
-      photoUrls = uploads.map((result) => result.url);
-    }
-
     const payload = {
       name: name.value,
       text: text.value,
-      photos: photoUrls,
-      turnstile_token: props.turnstileToken,
+      files: files.value,
+      turnstileToken: props.turnstileToken,
     };
     await createComment(props.issueId, payload);
     name.value = "";
@@ -60,7 +51,7 @@ async function submit() {
     files.value = [];
     emits("created");
   } finally {
-    submitting.value = false;
+    isSubmitting.value = false;
   }
 }
 </script>

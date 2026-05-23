@@ -29,7 +29,9 @@ async function formRequest(path, formData) {
     const error = await response.text();
     throw new Error(error || response.statusText);
   }
-  return response.json();
+  return response.headers.get("content-type")?.includes("application/json")
+    ? response.json()
+    : response.text();
 }
 
 export function loadIssues() {

@@ -175,6 +175,7 @@ onMounted(() => {
       layout: {
         "icon-image": ["case", ["get", "selected"], ["concat", "selected-", ["get", "issue_type_id"]], ["concat", "default-", ["get", "issue_type_id"]]],
         "icon-allow-overlap": true,
+        "icon-offset": [20, -16],
       },
     });
 
@@ -251,7 +252,7 @@ onMounted(() => {
 watch(() => props.issues, updateSource, { deep: true });
 watch(() => props.selectedIssueId, (newSelectedIssueId) => {
   updateSource();
-  if (map?.getZoom() < 15) {
+  if (newSelectedIssueId && map?.getZoom() < 15) {
     const newSelectedIssue = props.issues.find(issue => issue.id === newSelectedIssueId);
     map?.easeTo({
       center: [newSelectedIssue.longitude, newSelectedIssue.latitude], zoom: 15

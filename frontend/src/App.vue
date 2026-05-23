@@ -1,5 +1,9 @@
 <template>
   <main>
+    <div v-if="lightboxPhoto" class="lightbox" @click="lightboxPhoto = null">
+      <img :src="lightboxPhoto" @click.stop>
+    </div>
+
     <progress class="loading-issues-indicator" v-if="isLoadingIssues"></progress>
 
     <section class="map-column">
@@ -9,23 +13,21 @@
     </section>
 
     <section class="panel-column" :class="{ open: selectedIssueId || newIssueLocation }">
-      <div>
-        <button class="panel-close" type="button" @click="closePanel">
-          ×
-        </button>
+      <button class="panel-close" type="button" @click="closePanel">
+        ×
+      </button>
 
-        <template v-if="selectedIssueId">
-          <IssuePanel :issueId="selectedIssueId" :turnstileToken="turnstileToken" />
-        </template>
+      <template v-if="selectedIssueId">
+        <IssuePanel :issueId="selectedIssueId" :turnstileToken="turnstileToken" @openPhoto="openPhoto" />
+      </template>
 
-        <template v-else-if="newIssueLocation">
-          <IssueForm :location="newIssueLocation" :turnstileToken="turnstileToken"
-            @selectIssueTypeId="setNewIssueTypeId" @createIssue="onCreateIssue" />
-        </template>
+      <template v-else-if="newIssueLocation">
+        <IssueForm :location="newIssueLocation" :turnstileToken="turnstileToken" @selectIssueTypeId="setNewIssueTypeId"
+          @createIssue="onCreateIssue" />
+      </template>
 
-        <VueTurnstile :site-key="turnstileSiteKey" v-model="turnstileToken" theme="light" appearance="interaction-only"
-          language="de" />
-      </div>
+      <VueTurnstile :site-key="turnstileSiteKey" v-model="turnstileToken" theme="light" appearance="interaction-only"
+        language="de" />
     </section>
   </main>
 </template>
@@ -48,6 +50,7 @@ const newIssueLocation = ref(null);
 const newIssueTypeId = ref("anderes");
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 const turnstileToken = ref("");
+const lightboxPhoto = ref(null);
 
 watch(selectedIssueId, (newValue) => {
   const url = new URL(window.location.href)
@@ -67,6 +70,8 @@ async function onSelectIssue(id) {
 
 async function onCreateIssue(issue) {
   issues.value.push(issue);
+  newIssueLocation.value = null;
+  newIssueTypeId.value = "anderes";
   selectedIssueId.value = issue.id;
 }
 
@@ -90,6 +95,10 @@ function setNewIssueTypeId(issueTypeId) {
 
 function hideMapLoadingIndicator() {
   isLoadingIssues.value = false;
+}
+
+function openPhoto(url) {
+  lightboxPhoto.value = url;
 }
 
 onMounted(async () => {

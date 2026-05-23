@@ -1,24 +1,21 @@
-export async function upload(files) {
-  const formData = new FormData();
-  const buffer = await data.toBuffer();
-  const file = new Blob([buffer], {
-    type: data.mimetype,
-  });
-  formData.append("file", file, data.filename);
-  formData.append("metadata", JSON.stringify({ source: "radkummerkasten" }));
-  const response = await fetch(CLOUDFLARE_ENDPOINT_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-    },
-    body: formData,
-  });
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-  const result = await response.json();
-  if (!result.success) {
-    console.error(result);
-    return app.httpErrors.internalServerError("Upload failed");
-  }
+const s3 = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY,
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_KEY,
+  },
+});
 
-  return result.result.variants?.[0];
+export async function upload(filename, mimetype, buffer) {
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+      Key: filename,
+      Body: buffer,
+      ContentType: mimetype,
+    }),
+  );
 }

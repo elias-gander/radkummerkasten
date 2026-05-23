@@ -24,7 +24,7 @@
 
     <label>
       Fotos (optional)
-      <FileUpload v-model="files" :max-upload-size="5 * 1024 * 1024" />
+      <FileUpload v-model="files" v-model:isWithinFileSizeLimit="isWithinFileSizeLimit" />
     </label>
 
     <label>
@@ -38,7 +38,7 @@
     </label>
 
     <progress v-if="isSubmitting"></progress>
-    <button v-else type="submit" :disabled="!props.turnstileToken || isLoadingAddress">
+    <button v-else type="submit" :disabled="!props.turnstileToken || isLoadingAddress || !isWithinFileSizeLimit">
       Absenden
     </button>
   </form>
@@ -64,6 +64,7 @@ const files = ref([]);
 const address = ref("");
 const isLoadingAddress = ref(false);
 const isSubmitting = ref(false);
+const isWithinFileSizeLimit = ref(true);
 
 watch(issueTypeId, (newTypeId) => emits("selectIssueTypeId", newTypeId));
 watch(() => props.location, updateAddress, { immediate: true });
@@ -90,9 +91,10 @@ async function updateAddress() {
 }
 
 async function submit() {
+  isSubmitting.value = true;
   let newIssue = {
     id: null,
-    issueTypeId: issueTypeId.value,
+    issue_type_id: issueTypeId.value,
     latitude: props.location.latitude,
     longitude: props.location.longitude,
   };
@@ -101,11 +103,12 @@ async function submit() {
     latitude: props.location.latitude,
     longitude: props.location.longitude,
     name: name.value,
-    text: description.value,
+    description: description.value,
     email: email.value,
     turnstileToken: props.turnstileToken,
     files: files.value
   })
+  isSubmitting.value = false;
   emits("createIssue", newIssue);
 }
 </script>

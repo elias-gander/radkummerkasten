@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import { sendMagicLink } from "./lib/mail.js";
 import { verifyTurnstile } from "./lib/turnstile.js";
 import { ISSUE_TYPES } from "./constants.js";
+import { upload } from "./lib/upload.js";
+import { toBuffer } from "./lib/file.js";
 
 export default async function issueRoutes(app) {
   app.get("/issues", async () => {
@@ -15,14 +17,14 @@ export default async function issueRoutes(app) {
   app.get("/issues/:id", async (request) => {
     const { id } = request.params;
     const issueResult = await query(
-      "SELECT id, issue_type_id, description, name, email, upvotes, latitude, longitude, created_at FROM issues WHERE id = $1",
+      "SELECT id, issue_type_id, description, name, email, upvotes, photo_count, latitude, longitude, created_at FROM issues WHERE id = $1",
       [id],
     );
     if (!issueResult.rowCount) {
       return app.httpErrors.notFound("Issue not found");
     }
     const commentsResult = await query(
-      "SELECT id, name, text, photo_urls, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
+      "SELECT id, name, text, photo_count, created_at FROM comments WHERE issue_id = $1 ORDER BY created_at ASC",
       [id],
     );
     return {
@@ -37,13 +39,16 @@ export default async function issueRoutes(app) {
     const files = [];
     for await (const part of parts) {
       if (part.type === "file") {
-        files.push(part);
+        files.push({
+          mimetype: part.mimetype,
+          buffer: await toBuffer(part),
+        });
       } else {
         body[part.fieldname] = part.value;
       }
     }
 
-    const fields = [
+    const requiredFields = [
       "issue_type_id",
       "description",
       "name",
@@ -51,7 +56,7 @@ export default async function issueRoutes(app) {
       "longitude",
       "turnstile_token",
     ];
-    for (const field of fields) {
+    for (const field of requiredFields) {
       if (!body[field]) {
         return app.httpErrors.badRequest(`${field} is required`);
       }
@@ -66,55 +71,56 @@ export default async function issueRoutes(app) {
       return app.httpErrors.badRequest("Captcha verification failed");
     }
 
-    let urls = [];
-    if (files) {
-      for (const file of files) {
-        const url = await upload(file);
-        urls.push(url);
-      }
-    }
-
-    await query(
-      "INSERT INTO issues (issue_type_id, description, name, latitude, longitude, photo_urls) VALUES ($1, $2, $3, $4, $5, $6)",
+    const result = await query(
+      "INSERT INTO issues (issue_type_id, description, name, latitude, longitude, photo_count) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
       [
         body.issue_type_id,
         body.description,
         body.name,
         body.latitude,
         body.longitude,
-        urls,
+        files.length,
       ],
     );
+
+    const id = result.rows[0].id;
+    for (const [i, value] of files.entries()) {
+      await upload(`${id}-${i}`, files[i].mimetype, files[i].buffer);
+    }
 
     if (body.email) {
       await subscribeToIssue(id, body.email, body.turnstile_token);
     }
 
-    reply.code(204).send();
+    return id;
   });
 
-  app.post("/issues/:id/comments", async (request) => {
-    const { id } = request.params;
+  app.post("/issues/:issueId/comments", async (request, reply) => {
+    const { issueId } = request.params;
     const parts = request.parts();
     const body = {};
     const files = [];
     for await (const part of parts) {
       if (part.type === "file") {
-        files.push(part);
+        files.push({
+          name: part.filename,
+          mimetype: part.mimetype,
+          buffer: await toBuffer(part),
+        });
       } else {
         body[part.fieldname] = part.value;
       }
     }
 
-    const fields = ["name", "text", "turnstile_token"];
-    for (const field of fields) {
+    const requiredFields = ["name", "text", "turnstile_token"];
+    for (const field of requiredFields) {
       if (!body[field]) {
         return app.httpErrors.badRequest(`${field} is required`);
       }
     }
 
     const issueResult = await query("SELECT id FROM issues WHERE id = $1", [
-      id,
+      issueId,
     ]);
     if (!issueResult.rowCount) {
       return app.httpErrors.notFound("Issue not found");
@@ -126,18 +132,20 @@ export default async function issueRoutes(app) {
       return app.httpErrors.badRequest("Captcha verification failed");
     }
 
-    let urls = [];
-    if (files) {
-      for (const file of files) {
-        const url = await upload(file);
-        urls.push(url);
-      }
+    const result = await query(
+      "INSERT INTO comments (issue_id, name, text, photo_count) VALUES ($1, $2, $3, $4) RETURNING id",
+      [Number(issueId), body.name, body.text, files.length],
+    );
+    const commentId = result.rows[0].id;
+    for (const [i, value] of files.entries()) {
+      await upload(
+        `${issueId}-${commentId}-${i}`,
+        files[i].mimetype,
+        files[i].buffer,
+      );
     }
 
-    await query(
-      "INSERT INTO comments (issue_id, name, text, photo_urls) VALUES ($1, $2, $3, $4)",
-      [Number(id), body.name, body.text, urls],
-    );
+    reply.code(204).send();
   });
 
   app.post("/issues/:id/vote", async (request, reply) => {
