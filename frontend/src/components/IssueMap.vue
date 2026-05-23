@@ -261,8 +261,15 @@ watch(() => props.selectedIssueId, (newSelectedIssueId) => {
 });
 watch(
   [() => props.newIssueLocation, () => props.newIssueTypeId],
-  updateCreateMarker,
-  { deep: true },
+  ([newLocation, newTypeId]) => {
+    if (newLocation && map?.getZoom() < 15) {
+      map?.easeTo({
+        center: [newLocation.longitude, newLocation.latitude], zoom: 15
+      });
+    }
+    updateCreateMarker();
+  },
+  { deep: true }
 );
 
 onBeforeUnmount(() => {
