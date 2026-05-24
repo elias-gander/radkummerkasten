@@ -2,9 +2,11 @@
   <progress v-if="isLoadingIssue"></progress>
 
   <template v-else>
-    <h1>{{ISSUE_TYPES.find(t => t.id === issue?.issue_type_id)?.label}}</h1>
+    <div>
+      <h1>{{ISSUE_TYPES.find(t => t.id === issue?.issue_type_id)?.label}}</h1>
+      <div class="secondary">von {{ issue?.name }} am {{ formatDateTime(issue?.created_at) }}</div>
+    </div>
 
-    <div class="secondary">von {{ issue?.name }} am {{ formatDateTime(issue?.created_at) }}</div>
     <div class="text-body">{{ issue?.description }}</div>
 
     <div v-if="issue?.photo_count > 0" class="photo-grid">

@@ -1,36 +1,36 @@
 # Radkummerkasten
 
-A minimal Vienna issue tracker with MapLibre, Vue 3, Fastify, and Postgres.
+Neuimplementierung des Radlobby Wien Radkummerkastens mit modernem Technologiestack und einer für mobile Endgeräte ausgelegten Oberfläche.
 
-## Folder structure
+## Ordnerstruktur
 
-- `frontend/` — Vue 3 + Vite app with mobile-friendly map UI and email verification flow
-- `backend/` — Fastify REST API for issues, comments, verification, and Cloudflare uploads
-- `database/` — Postgres schema and Docker Compose setup
+- `frontend/` — Vue-3, Vite und Maplibre Website. Verwendet Cloudflare Captcha gegen Spam.
+- `backend/` — Fastify (Node.js) REST-API. Abindung an Cloudflare für Fotouploads.
+- `database/` — Postgres-Schema und Docker-Compose-Setup. `seed.sql` befüllt die Datenbank mit 10.000 zufällig lokalisierten Problemstellen.
 
-## Setup
+## Einrichtung
 
-1. Start the database:
+1. Datenbank starten:
 
 ```bash
 docker compose -f database/docker-compose.yml up -d
 ```
 
-2. Install backend dependencies:
+2. Backend-Abhängigkeiten installieren:
 
 ```bash
 cd backend
 npm install
 ```
 
-3. Install frontend dependencies:
+3. Frontend-Abhängigkeiten installieren:
 
 ```bash
 cd ../frontend
 npm install
 ```
 
-5. Start the backend and frontend:
+5. Backend und Frontend starten:
 
 ```bash
 cd backend
@@ -42,10 +42,22 @@ cd ../frontend
 npm run dev
 ```
 
-6. Open `http://localhost:5173`.
+6. `http://localhost:5173` öffnen.
 
-## Notes
+## TODO
 
-- The app uses a dev-mode magic link that logs the verification URL to the backend console.
-- Photos are represented with URLs, and the backend includes a Cloudflare upload proxy route.
-- The map uses client-side clustering with MapLibre.
+- Mailservice für E-Mail Verifizierung anbinden
+- Accessibility
+
+## Zu klären
+
+- Abweichungen vom bestehenden Radkummerkasten:
+  - Name statt getrenntem Vor- und Nachnamen
+  - kein Geschlecht notwendig
+  - Mailadresse optional (nur für Benachrichtigungen)
+  - kein Newsletter opt-in
+  - keine Zustimmung zur Datenschutzerklärung
+  - kein Statistik-Tab
+  - keine Möglichkeit nach Problemtypen zu filtern
+- erledigte Problemstelle Status und Icon
+- Ermitteln/Anzeigen von Adresse/Koordinaten notwendig?

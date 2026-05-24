@@ -1,4 +1,4 @@
--- PostgreSQL Seed: 10.000 Wiener Issues
+-- PostgreSQL Seed: 10.000 issues
 -- Voraussetzung:
 -- CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

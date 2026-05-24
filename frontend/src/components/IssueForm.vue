@@ -1,10 +1,12 @@
 <template>
-  <h1>Neue Problemstelle</h1>
-
-  <div class="secondary">
-    <progress v-if="isLoadingAddress"></progress>
-    <span v-else>{{ address }}</span> ({{ props.location.latitude.toFixed(6) }}, {{ props.location.longitude.toFixed(6)
-    }})
+  <div>
+    <h1>Neue Problemstelle</h1>
+    <div class="secondary">
+      <progress v-if="isLoadingAddress"></progress>
+      <span v-else>{{ address }}</span> ({{ props.location.latitude.toFixed(6) }}, {{
+        props.location.longitude.toFixed(6)
+      }})
+    </div>
   </div>
 
   <form @submit.prevent="submit">

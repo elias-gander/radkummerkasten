@@ -31,9 +31,11 @@ h1 {
 
 h2 {
   font-size: 1.25rem;
+  margin-top: 1rem;
 }
 
 h3 {
+  margin-top: 0.5rem;
   font-size: 1.1rem;
 }
 
@@ -116,7 +118,7 @@ main {
   overflow-wrap: anywhere;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   z-index: 998;
   box-shadow: -12px 0 30px rgba(0, 0, 0, 0.15);
 }
