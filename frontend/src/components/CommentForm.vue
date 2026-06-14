@@ -37,7 +37,6 @@ const isWithinFileSizeLimit = ref(true);
 
 async function submit() {
   isSubmitting.value = true;
-  console.log(files.value);
   try {
     const payload = {
       name: name.value,

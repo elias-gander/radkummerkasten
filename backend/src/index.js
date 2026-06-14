@@ -22,5 +22,5 @@ await app.register(multipart, {
 app.register(routes);
 
 const port = Number(process.env.PORT);
-await app.listen({ port, host: "0.0.0.0" });
-console.log(`Backend running on http://localhost:${port}`);
+await app.listen({ port, host: process.env.HOST });
+console.log(`Backend running on http://${process.env.HOST}:${port}`);
